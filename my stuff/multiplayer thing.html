@@ -2,39 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Multiplayer Chat & Canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Canvas Chat - Dark Mode</title>
+    <!-- Socket.IO (kept from original) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        :root {
+            --black: #000000;
+            --white: #FFFFFF;
+            --border-color: var(--white);
+            --text-color: var(--white);
+            --bg-color: var(--black);
+            --interactive-bg: var(--white);
+            --interactive-text: var(--black);
+            --interactive-border: var(--white);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
-            -khtml-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
         }
 
         body {
-            background: #0a0a0a;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
             height: 100vh;
             overflow: hidden;
             touch-action: none;
         }
 
-        .container {
+        .app-container {
             display: flex;
             height: 100vh;
         }
 
         .sidebar {
-            width: 300px;
-            background: #1a1a1a;
-            border-right: 1px solid #333;
+            width: 280px;
+            background: var(--bg-color);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -45,867 +59,1324 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            background: var(--bg-color);
         }
 
-        .tabs {
+        .header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
-            background: #222;
-            border-bottom: 1px solid #333;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 1rem;
-            background: #333;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .tab.active {
-            background: #555;
-        }
-
-        .tab:hover {
-            background: #444;
-        }
-
-        /* Chat Styles */
-        .chat-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 1rem;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem 0;
-            border: 1px solid #333;
-            background: #111;
-            margin-bottom: 1rem;
-        }
-
-        .message {
-            padding: 0.5rem 1rem;
-            margin: 0.25rem 0;
-            border-radius: 4px;
-            background: #222;
-            word-wrap: break-word;
-        }
-
-        .message-input {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .message-input input {
-            flex: 1;
-            padding: 0.75rem;
-            background: #222;
-            border: 1px solid #333;
-            color: #fff;
-            border-radius: 4px;
-            outline: none;
-        }
-
-        .message-input button {
-            padding: 0.75rem 1.5rem;
-            background: #007acc;
-            border: none;
-            color: #fff;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        /* Canvas Styles */
-        .canvas-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .canvas-toolbar {
-            display: flex;
-            gap: 0.5rem;
-            padding: 1rem;
-            background: #222;
-            border-bottom: 1px solid #333;
-            flex-wrap: wrap;
             align-items: center;
         }
 
-        .canvas-toolbar button, .canvas-toolbar input {
-            padding: 0.5rem;
-            background: #333;
-            border: 1px solid #555;
-            color: #fff;
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .mobile-menu-btn { /* Moved here for consistency */
+            display: none; /* Shown via media query */
+            background: transparent;
+            color: var(--white);
+            border: 1px solid var(--white);
+            padding: 8px;
             border-radius: 4px;
             cursor: pointer;
+            margin-right: 10px;
+            z-index: 101;
+        }
+        .mobile-menu-btn:hover {
+            background: var(--white);
+            color: var(--black);
+        }
+
+
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom:15px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        .form-group input[type="text"]::placeholder,
+        .form-group input[type="password"]::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        .form-group input[type="checkbox"] {
+            margin-right: 8px;
+            accent-color: var(--white); /* Basic styling for checkbox */
+        }
+
+        button.primary-btn {
+            padding: 10px 12px;
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border: 1px solid var(--interactive-border);
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button.primary-btn:hover {
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        button.secondary-btn {
+            padding: 10px 12px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        button.secondary-btn:hover {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+        }
+
+
+        .room-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px 20px; /* No top padding if header already has bottom */
+        }
+
+        .room-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .room-item:hover {
+            border-color: var(--white);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .room-item.active {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border-color: var(--interactive-bg);
+        }
+        .room-item.active .room-name,
+        .room-item.active .room-info {
+             color: var(--interactive-text);
+        }
+
+
+        .room-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .room-info {
             font-size: 12px;
-        }
-
-        .canvas-toolbar button:hover {
-            background: #444;
-        }
-
-        .canvas-toolbar button.active {
-            background: #007acc;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
         }
 
         .canvas-container {
             flex: 1;
             position: relative;
             overflow: hidden;
-            background: #fff;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .canvas-area {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        #drawingCanvas {
+        .canvas-wrapper {
             position: absolute;
             top: 0;
             left: 0;
+            right: 0;
+            bottom: 60px; /* Space for toolbar */
+            overflow: auto; /* For panning if canvas is larger */
+            background: var(--white); /* Drawing surface */
+        }
+
+        #canvas {
+            display: block;
             cursor: crosshair;
-            background: #fff;
+            background: var(--white); /* Explicitly white */
         }
 
-        .transform-handle {
+        .toolbar {
             position: absolute;
-            width: 8px;
-            height: 8px;
-            background: #007acc;
-            border: 1px solid #fff;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--bg-color);
+            /* border-top: 1px solid var(--border-color); removed as canvas-container has bottom border */
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 5px;
+            overflow-x: auto;
+        }
+
+        .tool-btn {
+            padding: 8px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
             cursor: pointer;
-            z-index: 10;
+            min-width: 40px; /* Adjust as needed for icons */
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .tool-btn svg {
+            width: 20px;
+            height: 20px;
         }
 
-        .transform-handle.corner { cursor: nw-resize; }
-        .transform-handle.rotate { 
-            border-radius: 50%;
-            background: #ff6b6b;
-            cursor: grab;
+        .tool-btn:hover {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
         }
 
-        /* Room Styles */
-        .room-list {
+        .tool-btn.active {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border-color: var(--interactive-bg);
+        }
+
+        input[type="color"], input[type="range"] {
+           margin: 0 5px;
+        }
+        input[type="color"] {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border-color);
+            padding: 2px;
+            background: var(--bg-color);
+            border-radius: 4px;
+        }
+         input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 2px;
+        }
+
+
+        .size-slider {
+            width: 100px;
+            accent-color: var(--white);
+        }
+
+        .chat-section {
+            height: 250px; /* Increased height a bit */
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-color);
+        }
+
+        .users-list {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-color);
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+
+        .user-item {
+            display: inline-block;
+            padding: 4px 10px;
+            margin: 2px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .user-item.me { /* Example for self highlight */
+            background: var(--white);
+            color: var(--black);
+            border-color: var(--white);
+        }
+
+
+        .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 15px;
         }
 
-        .room-controls {
-            padding: 1rem;
-            border-bottom: 1px solid #333;
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            max-width: 85%;
+        }
+        .message.own-message { /* Align own messages to the right */
+            margin-left: auto;
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border-color: var(--interactive-bg);
+        }
+        .message.own-message .message-author{
+            color: var(--interactive-text);
         }
 
-        .room-controls input, .room-controls button {
-            width: 100%;
-            margin: 0.25rem 0;
-            padding: 0.75rem;
-            background: #222;
-            border: 1px solid #333;
-            color: #fff;
-            border-radius: 4px;
+
+        .message-author {
+            font-weight: 600;
+            color: var(--text-color); /* Consider a subtle accent if allowed, else white */
+            display: block;
+            margin-bottom: 3px;
+        }
+        .message-text {
+            word-wrap: break-word;
         }
 
-        .room-controls button {
-            background: #007acc;
-            cursor: pointer;
-        }
-
-        .room-item {
-            padding: 1rem;
-            margin: 0.5rem 0;
-            background: #222;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .room-item:hover {
-            background: #333;
-        }
-
-        .room-item.active {
-            background: #007acc;
-        }
-
-        .room-info {
+        .chat-input-area { /* Renamed from .chat-input for clarity */
             display: flex;
-            justify-content: space-between;
+            padding: 15px;
+            gap: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input-area input[type="text"] {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+         .chat-input-area input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .chat-input-area button {
+            padding: 10px;
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border: 1px solid var(--interactive-border);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
             align-items: center;
-            margin-bottom: 0.5rem;
+            justify-content: center;
+            width: 44px; /* Square button for icon */
+            height: 44px;
+        }
+        .chat-input-area button svg {
+            width: 20px; height: 20px;
         }
 
-        .room-name {
-            font-weight: bold;
+        .chat-input-area button:hover {
+            background: var(--bg-color);
+            color: var(--text-color);
         }
 
-        .room-users {
-            font-size: 0.8em;
-            color: #aaa;
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85); /* Slight transparency for context */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
         }
 
-        .room-privacy {
-            font-size: 0.7em;
-            padding: 0.2rem 0.5rem;
-            border-radius: 10px;
-            background: #333;
+        .modal-content {
+            background: var(--bg-color);
+            padding: 25px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            max-width: 400px;
+            width: 100%;
+        }
+        .modal-content h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: var(--text-color);
+        }
+        .modal-content .form-group { /* reuse form-group styling */
+            margin-bottom: 20px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
         }
 
-        .room-privacy.private {
-            background: #ff6b6b;
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                height: 40%;
-                border-right: none;
-                border-bottom: 1px solid #333;
-            }
-            
-            .canvas-toolbar {
-                padding: 0.5rem;
-                gap: 0.25rem;
-            }
-            
-            .canvas-toolbar button, .canvas-toolbar input {
-                padding: 0.3rem;
-                font-size: 10px;
-            }
-        }
 
         .hidden {
             display: none !important;
         }
 
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100px;
-            color: #666;
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: absolute;
+                z-index: 100;
+                left: -100%;
+                transition: left 0.3s ease-in-out;
+                border-right: none; /* No border when full screen */
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+            .main-content {
+                margin-left:0; /* Reset margin if sidebar is overlay */
+            }
+
+            .mobile-menu-btn {
+                display: flex; /* Show button */
+                position: absolute; /* Position over main content if sidebar closed */
+                top: 12px;
+                left: 15px;
+            }
+            .app-container.sidebar-open .mobile-menu-btn {
+                /* Optionally move/style button when sidebar is open */
+                 /* e.g. move to header inside sidebar or change icon to 'x' */
+            }
+            .header h1 { margin-left: 10px; } /* Space for menu btn if it was inline */
         }
 
-        /* Input file styling */
-        .file-input {
-            display: none;
+        /* Selection handles might need more contrast if kept */
+        .selection-handles { position: absolute; pointer-events: none; }
+        .handle {
+            position: absolute;
+            width: 8px; height: 8px;
+            background: var(--white);
+            border: 1px solid var(--black); /* Black border on white handle */
+            border-radius: 50%;
+            pointer-events: all; cursor: pointer;
         }
-
-        /* Color picker styling */
-        input[type="color"] {
-            width: 40px;
-            height: 40px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        /* Brush size slider */
-        input[type="range"] {
-            width: 80px;
+        .handle.rotate {
+            background: var(--white); border-radius: 0;
+            transform: rotate(45deg);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <div class="room-controls">
-                <input type="text" id="roomNameInput" placeholder="Room name...">
-                <label>
-                    <input type="checkbox" id="privateRoomCheck"> Private Room
-                </label>
-                <button id="createRoomBtn">Create Room</button>
-                <button id="joinRoomBtn" disabled>Join Selected Room</button>
+    <div class="app-container" id="appContainer">
+        <!-- Mobile menu button is now part of the header for better flow control -->
+        
+        <div class="sidebar" id="sidebar">
+            <div class="header">
+                 <!-- Mobile menu button for closing when sidebar is open on mobile -->
+                <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                    <i data-lucide="x"></i> <!-- Changed to X when sidebar might be open -->
+                </button>
+                <h1>Canvas Rooms</h1>
             </div>
-            <div class="room-list" id="roomList">
-                <div class="loading">Loading rooms...</div>
+            
+            <div class="section">
+                <h3>Create Room</h3>
+                <div class="form-group">
+                    <input type="text" id="roomName" placeholder="Room name">
+                    <input type="text" id="username" placeholder="Your username">
+                    <label>
+                        <input type="checkbox" id="isPrivate"> Private room
+                    </label>
+                </div>
+                <button class="primary-btn" onclick="createRoom()">
+                    <i data-lucide="plus-circle"></i> Create Room
+                </button>
+            </div>
+            
+            <div class="section room-list-section"> <!-- Added class for flex grow -->
+                <h3>Active Rooms</h3>
+                <div class="room-list" id="roomList">
+                    <!-- Rooms will be populated by JS -->
+                </div>
             </div>
         </div>
-
+        
         <div class="main-content">
-            <div class="tabs">
-                <button class="tab active" data-tab="chat">Chat</button>
-                <button class="tab" data-tab="canvas">Canvas</button>
+            <div class="header main-header"> <!-- Added a class for main header -->
+                 <button class="mobile-menu-btn" id="mainMobileMenuBtn" onclick="toggleSidebar()">
+                    <i data-lucide="menu"></i>
+                </button>
+                <h2 id="currentRoomTitle" style="font-size: 18px; font-weight: 600;">Canvas Area</h2> <!-- Placeholder -->
             </div>
 
-            <div id="chatTab" class="chat-section">
-                <div class="chat-messages" id="chatMessages"></div>
-                <div class="message-input">
+            <div class="canvas-container">
+                <div class="canvas-wrapper">
+                    <canvas id="canvas" width="1200" height="800"></canvas>
+                    <div class="selection-handles hidden" id="selectionHandles"></div>
+                </div>
+                
+                <div class="toolbar">
+                    <button class="tool-btn active" data-tool="brush" title="Brush"><i data-lucide="paint-brush"></i></button>
+                    <button class="tool-btn" data-tool="eraser" title="Eraser"><i data-lucide="eraser"></i></button>
+                    <button class="tool-btn" data-tool="fill" title="Fill Bucket"><i data-lucide="paint-bucket"></i></button>
+                    <button class="tool-btn" data-tool="select" title="Select"><i data-lucide="mouse-pointer-click"></i></button>
+                    <input type="color" id="colorPicker" value="#FFFFFF" title="Color Picker"> <!-- Default to white for drawing on black initially, but canvas is white -->
+                    <input type="range" id="brushSize" class="size-slider" min="1" max="50" value="5" title="Brush Size">
+                    <button class="tool-btn" onclick="undo()" title="Undo"><i data-lucide="undo-2"></i></button>
+                    <button class="tool-btn" onclick="redo()" title="Redo"><i data-lucide="redo-2"></i></button>
+                    <button class="tool-btn" onclick="clearCanvas()" title="Clear Canvas"><i data-lucide="trash-2"></i></button>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                    <button class="tool-btn" onclick="document.getElementById('imageUpload').click()" title="Import Image"><i data-lucide="image-plus"></i></button>
+                    <button class="tool-btn" onclick="downloadCanvas()" title="Download Image"><i data-lucide="download"></i></button>
+                </div>
+            </div>
+            
+            <div class="chat-section">
+                <div class="users-list" id="usersList">
+                    <!-- User items will be populated by JS -->
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Messages will be populated by JS -->
+                </div>
+                <div class="chat-input-area">
                     <input type="text" id="messageInput" placeholder="Type a message...">
-                    <button id="sendMessageBtn">Send</button>
-                </div>
-            </div>
-
-            <div id="canvasTab" class="canvas-section hidden">
-                <div class="canvas-toolbar">
-                    <button id="brushTool" class="active">Brush</button>
-                    <button id="eraserTool">Eraser</button>
-                    <button id="fillTool">Fill</button>
-                    <input type="color" id="colorPicker" value="#000000">
-                    <input type="range" id="brushSize" min="1" max="50" value="5">
-                    <span>Size: <span id="brushSizeDisplay">5</span>px</span>
-                    <button id="undoBtn">Undo</button>
-                    <button id="redoBtn">Redo</button>
-                    <button id="clearBtn">Clear</button>
-                    <button id="importBtn">Import</button>
-                    <input type="file" id="fileInput" class="file-input" accept="image/*">
-                    <button id="downloadBtn">Download</button>
-                </div>
-                <div class="canvas-container">
-                    <div class="canvas-area">
-                        <canvas id="drawingCanvas"></canvas>
-                    </div>
+                    <button onclick="sendMessage()" title="Send Message">
+                        <i data-lucide="send"></i>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <div class="modal hidden" id="joinModal">
+        <div class="modal-content">
+            <h3>Join Room</h3>
+            <div class="form-group">
+                <input type="text" id="joinUsername" placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+                <input type="password" id="roomPassword" placeholder="Room password (if private)">
+            </div>
+            <div class="modal-buttons">
+                <button class="secondary-btn" onclick="closeModal()">Cancel</button>
+                <button class="primary-btn" onclick="joinRoom()">
+                    <i data-lucide="log-in"></i> Join
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        class MultiplayerApp {
-            constructor() {
-                this.gun = Gun();
-                this.userId = 'user_' + Math.random().toString(36).substr(2, 9);
-                this.currentRoom = null;
-                this.selectedRoom = null;
-                this.messageHistory = new Set();
-                
-                this.initUI();
-                this.initCanvas();
-                this.loadRooms();
-                this.startHeartbeat();
-            }
+        // Global variables (largely same as original)
+        let socket = null;
+        let canvas, ctx;
+        let currentTool = 'brush';
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+        let currentRoom = null;
+        let localUsername = ''; // Renamed to avoid conflict with #username input
+        let undoStack = [];
+        let redoStack = [];
+        let selectedRoomId = null; // Renamed for clarity
+        // let selectedImage = null; // This was unused in original logic
+        let rooms = {};
+        let lastMessageId = 0;
+        let currentPath = [];
 
-            initUI() {
-                // Tab switching
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.addEventListener('click', (e) => {
-                        const tabName = e.target.dataset.tab;
-                        this.switchTab(tabName);
-                    });
-                });
+        // DOM Elements cache
+        let sidebarEl, appContainerEl, mainMobileMenuBtnEl, sidebarMobileMenuBtnEl, currentRoomTitleEl;
 
-                // Room controls
-                document.getElementById('createRoomBtn').addEventListener('click', () => this.createRoom());
-                document.getElementById('joinRoomBtn').addEventListener('click', () => this.joinRoom());
-                
-                // Chat
-                document.getElementById('sendMessageBtn').addEventListener('click', () => this.sendMessage());
-                document.getElementById('messageInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.sendMessage();
-                });
+        document.addEventListener('DOMContentLoaded', init);
 
-                // Canvas toolbar
-                this.setupCanvasToolbar();
-            }
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            // Cache DOM elements
+            sidebarEl = document.getElementById('sidebar');
+            appContainerEl = document.getElementById('appContainer');
+            mainMobileMenuBtnEl = document.getElementById('mainMobileMenuBtn');
+            sidebarMobileMenuBtnEl = sidebarEl.querySelector('.mobile-menu-btn'); // Inside sidebar
+            currentRoomTitleEl = document.getElementById('currentRoomTitle');
+            
+            // Default color picker to black for drawing on white canvas
+            document.getElementById('colorPicker').value = '#000000';
 
-            switchTab(tabName) {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-                
-                document.querySelectorAll('.chat-section, .canvas-section').forEach(s => s.classList.add('hidden'));
-                document.getElementById(tabName + 'Tab').classList.remove('hidden');
-
-                if (tabName === 'canvas') {
-                    this.resizeCanvas();
-                }
-            }
-
-            createRoom() {
-                const roomName = document.getElementById('roomNameInput').value.trim();
-                if (!roomName) return;
-
-                const isPrivate = document.getElementById('privateRoomCheck').checked;
-                const roomId = 'room_' + Math.random().toString(36).substr(2, 9);
-                
-                const roomData = {
-                    id: roomId,
-                    name: roomName,
-                    host: this.userId,
-                    private: isPrivate,
-                    users: [this.userId],
-                    created: Date.now(),
-                    lastActivity: Date.now()
+            // Connect to public Socket.IO server (replace with your actual server)
+            // For demo purposes, using the placeholder.
+            // For a real application, you'd host your own Socket.IO server.
+            try {
+                 socket = io('https://socket-io-chat.now.sh'); // This server might be down or restrictive
+                // socket = io(); // If your server is on the same host/port
+            } catch (e) {
+                console.error("Socket.IO connection failed. Using a mock socket.", e);
+                // Fallback to a mock socket if connection fails, to allow UI interaction
+                socket = {
+                    on: (event, callback) => console.log(`Mock socket: Registering handler for ${event}`),
+                    emit: (event, data) => console.log(`Mock socket: Emitting ${event}`, data),
+                    connected: false // Indicate it's not a real connection
                 };
-
-                this.gun.get('rooms').get(roomId).put(roomData);
-                document.getElementById('roomNameInput').value = '';
-                document.getElementById('privateRoomCheck').checked = false;
-                
-                setTimeout(() => this.joinRoomById(roomId), 500);
+                addChatMessage('System', 'Failed to connect to server. Running in offline mode.');
             }
+            
+            setupEventListeners();
+            setupCanvasEvents();
+            setupMobileSupport(); // Call this to set initial mobile state
+            saveCanvasState(); // Initial empty state
 
-            joinRoom() {
-                if (this.selectedRoom) {
-                    this.joinRoomById(this.selectedRoom);
+            lucide.createIcons(); // Initialize Lucide icons
+        }
+
+        function setupEventListeners() {
+            // Socket events
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                socket.emit('getRooms');
+                if (document.getElementById('username').value) { // If username was pre-filled
+                    localUsername = document.getElementById('username').value.trim();
                 }
-            }
+            });
 
-            joinRoomById(roomId) {
-                if (this.currentRoom) {
-                    this.leaveCurrentRoom();
+            socket.on('roomsList', (roomsData) => {
+                rooms = roomsData;
+                updateRoomsList();
+            });
+
+            socket.on('roomCreated', (room) => {
+                rooms[room.id] = room;
+                updateRoomsList();
+                 // If this client created the room, auto-join logic might be needed here
+                // or assume the server handles sending 'joinedRoom'
+            });
+
+            socket.on('roomDeleted', (roomId) => {
+                delete rooms[roomId];
+                updateRoomsList();
+                if (currentRoom === roomId) {
+                    handleLeaveRoomUI(); // More descriptive name
                 }
+            });
 
-                this.currentRoom = roomId;
-                this.gun.get('rooms').get(roomId).get('users').set(this.userId);
-                this.gun.get('rooms').get(roomId).put({ lastActivity: Date.now() });
-                
-                this.loadRoomMessages();
-                this.loadCanvasData();
-                this.updateRoomUserCount();
-            }
-
-            leaveCurrentRoom() {
-                if (this.currentRoom) {
-                    this.gun.get('rooms').get(this.currentRoom).get('users').get(this.userId).put(null);
-                    this.currentRoom = null;
-                    document.getElementById('chatMessages').innerHTML = '';
-                    this.clearCanvas();
+            socket.on('joinedRoom', (data) => {
+                currentRoom = data.roomId;
+                // localUsername is set when creating or joining
+                updateUsersList(data.users);
+                loadRoomCanvas(data.canvasData);
+                closeModal();
+                if (sidebarEl.classList.contains('open')) {
+                    toggleSidebar(); // Close sidebar on mobile after joining
                 }
-            }
+                currentRoomTitleEl.textContent = rooms[currentRoom] ? rooms[currentRoom].name : 'Unknown Room';
+                addChatMessage('System', `You joined '${currentRoomTitleEl.textContent}'.`);
+                // Highlight own username in users list
+                updateUsersList(data.users);
+            });
 
-            loadRooms() {
-                this.gun.get('rooms').map().on((roomData, roomId) => {
-                    if (roomData && roomData.name) {
-                        this.updateRoomInList(roomId, roomData);
-                        this.cleanupEmptyRooms(roomId, roomData);
-                    }
-                });
-            }
+            socket.on('userJoined', (data) => {
+                if(rooms[data.roomId]) rooms[data.roomId].users = data.users.length; // Update user count
+                updateRoomsList(); // Refresh list to show new user count
+                updateUsersList(data.users);
+                addChatMessage('System', `${data.username} joined the room`);
+            });
 
-            updateRoomInList(roomId, roomData) {
-                const roomList = document.getElementById('roomList');
-                let roomElement = document.getElementById('room_' + roomId);
-                
-                if (!roomElement) {
-                    roomElement = document.createElement('div');
-                    roomElement.id = 'room_' + roomId;
-                    roomElement.className = 'room-item';
-                    roomList.appendChild(roomElement);
-                    
-                    roomElement.addEventListener('click', () => {
-                        document.querySelectorAll('.room-item').forEach(r => r.classList.remove('active'));
-                        roomElement.classList.add('active');
-                        this.selectedRoom = roomId;
-                        document.getElementById('joinRoomBtn').disabled = false;
-                    });
-                }
+            socket.on('userLeft', (data) => {
+                if(rooms[data.roomId]) rooms[data.roomId].users = data.users.length; // Update user count
+                updateRoomsList();
+                updateUsersList(data.users);
+                addChatMessage('System', `${data.username} left the room`);
+            });
 
-                // Count active users
-                let userCount = 0;
-                if (roomData.users) {
-                    this.gun.get('rooms').get(roomId).get('users').map().once((user, userId) => {
-                        if (user) userCount++;
-                    });
-                }
-
-                roomElement.innerHTML = `
-                    <div class="room-info">
-                        <div class="room-name">${roomData.name}</div>
-                        <div class="room-privacy ${roomData.private ? 'private' : ''}">${roomData.private ? 'Private' : 'Public'}</div>
-                    </div>
-                    <div class="room-users">${userCount} users online</div>
-                `;
-            }
-
-            cleanupEmptyRooms(roomId, roomData) {
-                setTimeout(() => {
-                    let hasUsers = false;
-                    this.gun.get('rooms').get(roomId).get('users').map().once((user, userId) => {
-                        if (user) hasUsers = true;
-                    });
-                    
-                    if (!hasUsers && Date.now() - roomData.lastActivity > 60000) {
-                        this.gun.get('rooms').get(roomId).put(null);
-                        const roomElement = document.getElementById('room_' + roomId);
-                        if (roomElement) roomElement.remove();
-                    }
-                }, 30000);
-            }
-
-            loadRoomMessages() {
-                if (!this.currentRoom) return;
-                
-                this.gun.get('rooms').get(this.currentRoom).get('messages').map().on((messageData, messageId) => {
-                    if (messageData && !this.messageHistory.has(messageId)) {
-                        this.displayMessage(messageData);
-                        this.messageHistory.add(messageId);
-                    }
-                });
-            }
-
-            sendMessage() {
-                const input = document.getElementById('messageInput');
-                const text = input.value.trim();
-                if (!text || !this.currentRoom) return;
-
-                const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-                const messageData = {
-                    id: messageId,
-                    user: this.userId,
-                    text: text,
-                    timestamp: Date.now()
-                };
-
-                this.gun.get('rooms').get(this.currentRoom).get('messages').get(messageId).put(messageData);
-                input.value = '';
-            }
-
-            displayMessage(messageData) {
-                const messagesContainer = document.getElementById('chatMessages');
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message';
-                messageElement.textContent = `${messageData.user}: ${messageData.text}`;
-                messagesContainer.appendChild(messageElement);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-
-            // Canvas Implementation
-            initCanvas() {
-                this.canvas = document.getElementById('drawingCanvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.isDrawing = false;
-                this.currentTool = 'brush';
-                this.brushSize = 5;
-                this.currentColor = '#000000';
-                this.undoStack = [];
-                this.redoStack = [];
-                this.lastPoint = null;
-                this.images = [];
-                this.selectedImage = null;
-                
-                this.resizeCanvas();
-                this.setupCanvasEvents();
-                window.addEventListener('resize', () => this.resizeCanvas());
-            }
-
-            resizeCanvas() {
-                const container = document.querySelector('.canvas-container');
-                if (!container) return;
-                
-                const rect = container.getBoundingClientRect();
-                this.canvas.width = rect.width;
-                this.canvas.height = rect.height;
-                
-                this.ctx.lineCap = 'round';
-                this.ctx.lineJoin = 'round';
-                this.redrawCanvas();
-            }
-
-            setupCanvasToolbar() {
-                document.getElementById('brushTool').addEventListener('click', () => this.setTool('brush'));
-                document.getElementById('eraserTool').addEventListener('click', () => this.setTool('eraser'));
-                document.getElementById('fillTool').addEventListener('click', () => this.setTool('fill'));
-                document.getElementById('colorPicker').addEventListener('change', (e) => this.currentColor = e.target.value);
-                document.getElementById('brushSize').addEventListener('input', (e) => {
-                    this.brushSize = e.target.value;
-                    document.getElementById('brushSizeDisplay').textContent = e.target.value;
-                });
-                document.getElementById('undoBtn').addEventListener('click', () => this.undo());
-                document.getElementById('redoBtn').addEventListener('click', () => this.redo());
-                document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
-                document.getElementById('importBtn').addEventListener('click', () => document.getElementById('fileInput').click());
-                document.getElementById('fileInput').addEventListener('change', (e) => this.importImage(e));
-                document.getElementById('downloadBtn').addEventListener('click', () => this.downloadCanvas());
-            }
-
-            setTool(tool) {
-                this.currentTool = tool;
-                document.querySelectorAll('.canvas-toolbar button').forEach(btn => btn.classList.remove('active'));
-                document.getElementById(tool + 'Tool').classList.add('active');
-                
-                this.canvas.style.cursor = tool === 'brush' ? 'crosshair' : 
-                                          tool === 'eraser' ? 'grab' : 
-                                          'crosshair';
-            }
-
-            setupCanvasEvents() {
-                // Mouse events
-                this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
-                this.canvas.addEventListener('mousemove', (e) => this.draw(e));
-                this.canvas.addEventListener('mouseup', () => this.stopDrawing());
-                this.canvas.addEventListener('mouseout', () => this.stopDrawing());
-
-                // Touch events for mobile
-                this.canvas.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const mouseEvent = new MouseEvent('mousedown', {
-                        clientX: touch.clientX,
-                        clientY: touch.clientY
-                    });
-                    this.canvas.dispatchEvent(mouseEvent);
-                });
-
-                this.canvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const mouseEvent = new MouseEvent('mousemove', {
-                        clientX: touch.clientX,
-                        clientY: touch.clientY
-                    });
-                    this.canvas.dispatchEvent(mouseEvent);
-                });
-
-                this.canvas.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    const mouseEvent = new MouseEvent('mouseup', {});
-                    this.canvas.dispatchEvent(mouseEvent);
-                });
-            }
-
-            getMousePos(e) {
-                const rect = this.canvas.getBoundingClientRect();
-                return {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
-                };
-            }
-
-            startDrawing(e) {
-                this.isDrawing = true;
-                const pos = this.getMousePos(e);
-                this.lastPoint = pos;
-                
-                if (this.currentTool === 'fill') {
-                    this.floodFill(pos.x, pos.y, this.currentColor);
-                    this.saveState();
-                    this.syncCanvas();
-                }
-            }
-
-            draw(e) {
-                if (!this.isDrawing || this.currentTool === 'fill') return;
-                
-                const pos = this.getMousePos(e);
-                
-                this.ctx.globalCompositeOperation = this.currentTool === 'eraser' ? 'destination-out' : 'source-over';
-                this.ctx.strokeStyle = this.currentColor;
-                this.ctx.lineWidth = this.brushSize;
-                
-                this.ctx.beginPath();
-                this.ctx.moveTo(this.lastPoint.x, this.lastPoint.y);
-                this.ctx.lineTo(pos.x, pos.y);
-                this.ctx.stroke();
-                
-                this.lastPoint = pos;
-                
-                // Sync drawing data
-                const drawData = {
-                    tool: this.currentTool,
-                    color: this.currentColor,
-                    size: this.brushSize,
-                    from: this.lastPoint,
-                    to: pos,
-                    timestamp: Date.now()
-                };
-                
-                if (this.currentRoom) {
-                    this.gun.get('rooms').get(this.currentRoom).get('canvas').get('strokes').set(drawData);
-                }
-            }
-
-            stopDrawing() {
-                if (this.isDrawing) {
-                    this.isDrawing = false;
-                    this.saveState();
-                }
-            }
-
-            floodFill(startX, startY, fillColor) {
-                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-                const data = imageData.data;
-                const stack = [[Math.floor(startX), Math.floor(startY)]];
-                const fillColorRgb = this.hexToRgb(fillColor);
-                const targetColor = this.getPixelColor(data, startX, startY, this.canvas.width);
-                
-                if (this.colorsMatch(targetColor, fillColorRgb)) return;
-                
-                while (stack.length > 0) {
-                    const [x, y] = stack.pop();
-                    if (x < 0 || x >= this.canvas.width || y < 0 || y >= this.canvas.height) continue;
-                    
-                    const currentColor = this.getPixelColor(data, x, y, this.canvas.width);
-                    if (!this.colorsMatch(currentColor, targetColor)) continue;
-                    
-                    this.setPixelColor(data, x, y, this.canvas.width, fillColorRgb);
-                    
-                    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-                }
-                
-                this.ctx.putImageData(imageData, 0, 0);
-            }
-
-            hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : null;
-            }
-
-            getPixelColor(data, x, y, width) {
-                const index = (y * width + x) * 4;
-                return {
-                    r: data[index],
-                    g: data[index + 1],
-                    b: data[index + 2]
-                };
-            }
-
-            setPixelColor(data, x, y, width, color) {
-                const index = (y * width + x) * 4;
-                data[index] = color.r;
-                data[index + 1] = color.g;
-                data[index + 2] = color.b;
-                data[index + 3] = 255;
-            }
-
-            colorsMatch(color1, color2) {
-                return color1.r === color2.r && color1.g === color2.g && color1.b === color2.b;
-            }
-
-            saveState() {
-                this.undoStack.push(this.canvas.toDataURL());
-                if (this.undoStack.length > 50) this.undoStack.shift();
-                this.redoStack = [];
-            }
-
-            undo() {
-                if (this.undoStack.length > 0) {
-                    this.redoStack.push(this.canvas.toDataURL());
-                    const previousState = this.undoStack.pop();
-                    this.loadCanvasFromDataURL(previousState);
-                    this.syncCanvas();
-                }
-            }
-
-            redo() {
-                if (this.redoStack.length > 0) {
-                    this.undoStack.push(this.canvas.toDataURL());
-                    const nextState = this.redoStack.pop();
-                    this.loadCanvasFromDataURL(nextState);
-                    this.syncCanvas();
-                }
-            }
-
-            loadCanvasFromDataURL(dataURL) {
-                const img = new Image();
-                img.onload = () => {
-                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                    this.ctx.drawImage(img, 0, 0);
-                };
-                img.src = dataURL;
-            }
-
-            clearCanvas() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.saveState();
-                this.syncCanvas();
-            }
-
-            importImage(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = (event) => {
+            socket.on('canvasUpdate', (update) => { // Changed 'data' to 'update' to avoid conflict
+                if (update.tool === 'image' && update.imageData) {
                     const img = new Image();
                     img.onload = () => {
-                        this.ctx.drawImage(img, 0, 0, img.width, img.height);
-                        this.saveState();
-                        this.syncCanvas();
+                        ctx.drawImage(img, 0, 0);
+                        // No saveCanvasState() here, as it's a remote update
                     };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
+                    img.src = update.imageData;
+                } else if (update.tool === 'fill') {
+                    // Re-implement flood fill for remote updates if needed, or simplify
+                    // For simplicity, this example might not perfectly replicate complex fills remotely
+                    // The original floodFill function modifies local canvas and then emits.
+                    // Receiving a fill event means we should execute it.
+                    // This requires the original floodFill logic to be callable with data.
+                     const tempColor = document.getElementById('colorPicker').value;
+                     document.getElementById('colorPicker').value = update.color; // Temporarily set color
+                     performFloodFill(update.x, update.y); // Renamed original floodFill
+                     document.getElementById('colorPicker').value = tempColor; // Restore color
+                }
+                else if (update.path) { // Drawing path
+                    drawOnCanvas(update);
+                }
+            });
 
-            downloadCanvas() {
-                const link = document.createElement('a');
-                link.download = 'canvas-drawing.png';
-                link.href = this.canvas.toDataURL();
-                link.click();
-            }
+            socket.on('canvasCleared', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // No saveCanvasState() here for remote clear
+            });
 
-            syncCanvas() {
-                if (this.currentRoom) {
-                    const canvasData = this.canvas.toDataURL();
-                    this.gun.get('rooms').get(this.currentRoom).get('canvas').put({
-                        data: canvasData,
-                        timestamp: Date.now()
-                    });
+            socket.on('chatMessage', (data) => {
+                // Simple duplicate check based on ID (if provided by server)
+                // The original used Date.now() which is not unique across clients.
+                // Server should assign unique IDs or clients should handle potential duplicates.
+                // if (data.id > lastMessageId) { // This check might be problematic with multiple clients
+                    addChatMessage(data.username, data.message, data.username === localUsername);
+                //     lastMessageId = data.id;
+                // }
+            });
+
+            socket.on('kicked', () => {
+                alert('You have been kicked from the room');
+                handleLeaveRoomUI();
+            });
+            
+            socket.on('joinError', (message) => {
+                alert(`Could not join room: ${message}`);
+                closeModal();
+            });
+
+
+            // Tool buttons
+            document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentTool = btn.dataset.tool;
+                    document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    canvas.style.cursor = currentTool === 'eraser' ? 'crosshair' : // Customize cursors further if needed
+                                        currentTool === 'fill' ? 'crosshair' : // (e.g., using custom SVG cursors)
+                                        currentTool === 'select' ? 'default' : 'crosshair';
+                });
+            });
+
+            // Image upload
+            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+
+            // Chat input
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { // Send on Enter, allow Shift+Enter for newline
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+
+        function setupCanvasEvents() {
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing); // Stop if mouse leaves canvas
+
+            // Touch events for basic drawing
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch(e, startDrawing);}, { passive: false });
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleTouch(e, draw);}, { passive: false });
+            canvas.addEventListener('touchend', (e) => { e.preventDefault(); handleTouch(e, stopDrawing);}, { passive: false });
+        }
+
+        function handleTouch(e, drawingFunction) {
+            const touch = e.touches[0] || e.changedTouches[0];
+            // Create a mock mouse event
+            const mockEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                // button: 0, // Main button
+                // buttons: 1 // Main button pressed
+            });
+            // Call the respective mouse drawing function with the mock event
+            // drawingFunction(mockEvent); // This might not work directly as startDrawing/draw/stopDrawing have specific logic
+             if (e.type === 'touchstart') startDrawing(mockEvent);
+             else if (e.type === 'touchmove') draw(mockEvent);
+             else if (e.type === 'touchend') stopDrawing(mockEvent);
+        }
+
+
+        function setupMobileSupport() {
+            const isMobile = window.innerWidth <= 768;
+            mainMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
+            sidebarMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
+
+            if (!isMobile) {
+                sidebarEl.classList.remove('open'); // Ensure sidebar isn't stuck open on desktop
+                appContainerEl.classList.remove('sidebar-open');
+            }
+             // Initial state: sidebar closed on mobile
+            if (isMobile && sidebarEl.classList.contains('open')) {
+                toggleSidebar(); 
+            }
+        }
+        window.addEventListener('resize', setupMobileSupport);
+
+
+        function toggleSidebar() {
+            sidebarEl.classList.toggle('open');
+            appContainerEl.classList.toggle('sidebar-open'); // To adjust main content if needed
+
+            // Change icon on the button inside the sidebar
+            const sidebarIcon = sidebarMobileMenuBtnEl.querySelector('i');
+            if (sidebarEl.classList.contains('open')) {
+                sidebarIcon.setAttribute('data-lucide', 'x');
+            } else {
+                sidebarIcon.setAttribute('data-lucide', 'menu'); // Should be menu but it's in main header
+            }
+            lucide.createIcons(); // Re-render icons if attributes changed
+        }
+
+
+        function createRoom() {
+            const roomName = document.getElementById('roomName').value.trim();
+            const userVal = document.getElementById('username').value.trim(); // This is the general username input
+            const isPrivate = document.getElementById('isPrivate').checked;
+
+            if (!roomName || !userVal) {
+                alert('Please enter room name and your username');
+                return;
+            }
+            localUsername = userVal; // Set local username
+
+            let password = null;
+            if (isPrivate) {
+                password = prompt('Enter room password (min 6 chars):');
+                if (!password || password.length < 6) {
+                    alert('Private rooms require a password of at least 6 characters.');
+                    return;
                 }
             }
 
-            loadCanvasData() {
-                if (!this.currentRoom) return;
-                
-                this.gun.get('rooms').get(this.currentRoom).get('canvas').on((canvasData) => {
-                    if (canvasData && canvasData.data) {
-                        this.loadCanvasFromDataURL(canvasData.data);
+            const roomData = {
+                name: roomName,
+                username: localUsername, // Send the set username
+                isPrivate: isPrivate,
+                password: password // Will be null if not private
+            };
+
+            socket.emit('createRoom', roomData);
+            // Assuming server sends 'joinedRoom' event after successful creation
+            // Or we could optimistically join/update UI here and correct if error
+        }
+
+        function updateRoomsList() {
+            const roomListEl = document.getElementById('roomList');
+            // Filter for public rooms or rooms the user might have access to (more complex logic needed for private ones not listed publicly)
+            const displayableRooms = Object.values(rooms).filter(room => !room.isPrivate || room.id === currentRoom); // Simplified: show current private room
+            
+            roomListEl.innerHTML = ''; // Clear existing list
+            if (displayableRooms.length === 0) {
+                roomListEl.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-style:italic;">No active public rooms.</p>';
+            }
+
+            displayableRooms.forEach(room => {
+                const roomDiv = document.createElement('div');
+                roomDiv.className = 'room-item';
+                if (room.id === currentRoom) {
+                    roomDiv.classList.add('active');
+                }
+                roomDiv.innerHTML = `
+                    <div class="room-name">${room.name} ${room.isPrivate ? '<i data-lucide="lock" style="width:12px; height:12px; vertical-align:middle;"></i>' : ''}</div>
+                    <div class="room-info">${room.users} user(s) online</div>
+                `;
+                roomDiv.addEventListener('click', () => {
+                    if (currentRoom !== room.id) {
+                        selectRoomToJoin(room.id);
                     }
                 });
+                roomListEl.appendChild(roomDiv);
+            });
+            lucide.createIcons();
+        }
+
+        function selectRoomToJoin(roomId) {
+            selectedRoomId = roomId;
+            const room = rooms[roomId];
+            if (!room) {
+                alert("Room not found.");
+                return;
             }
 
-            redrawCanvas() {
-                // Redraw any persistent canvas elements
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            }
+            document.getElementById('joinUsername').value = localUsername || document.getElementById('username').value.trim(); // Pre-fill username
+            document.getElementById('roomPassword').style.display = room.isPrivate ? 'block' : 'none';
+            document.getElementById('joinModal').classList.remove('hidden');
+        }
 
-            updateRoomUserCount() {
-                if (!this.currentRoom) return;
-                
-                setInterval(() => {
-                    this.gun.get('rooms').get(this.currentRoom).put({ lastActivity: Date.now() });
-                }, 30000);
-            }
+        function joinRoom() {
+            const userToJoin = document.getElementById('joinUsername').value.trim();
+            const password = document.getElementById('roomPassword').value;
+            const roomToJoin = rooms[selectedRoomId];
 
-            startHeartbeat() {
-                setInterval(() => {
-                    if (this.currentRoom) {
-                        this.gun.get('rooms').get(this.currentRoom).get('users').get(this.userId).put({
-                            id: this.userId,
-                            lastSeen: Date.now()
-                        });
-                    }
-                }, 15000);
+            if (!userToJoin) {
+                alert('Please enter your username to join.');
+                return;
+            }
+            if (roomToJoin.isPrivate && !password) {
+                alert('This room is private. Please enter the password.');
+                return;
+            }
+            localUsername = userToJoin; // Update local username
+
+            socket.emit('joinRoom', {
+                roomId: selectedRoomId,
+                username: localUsername,
+                password: roomToJoin.isPrivate ? password : null
+            });
+            // Server will respond with 'joinedRoom' or an error event
+        }
+
+        function closeModal() {
+            document.getElementById('joinModal').classList.add('hidden');
+            document.getElementById('joinUsername').value = ''; // Keep prefill from localUsername
+            document.getElementById('roomPassword').value = '';
+        }
+
+        function handleLeaveRoomUI() { // Renamed from leaveRoom
+            if (currentRoom) {
+                 addChatMessage('System', `You left '${currentRoomTitleEl.textContent}'.`);
+                currentRoom = null;
+                // localUsername remains, as user is still "logged in" with that name
+                document.getElementById('usersList').innerHTML = '';
+                document.getElementById('chatMessages').innerHTML = ''; // Or keep messages? User preference.
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                saveCanvasState(); // Save cleared state
+                currentRoomTitleEl.textContent = 'Canvas Area';
+                updateRoomsList(); // To remove 'active' class from the room item
+            }
+        }
+        
+        // Actual leave room emission, if user clicks a "Leave Room" button (not implemented)
+        function emitLeaveRoom() {
+            if (currentRoom) {
+                socket.emit('leaveRoom'); // Server handles 'userLeft' broadcast
+                handleLeaveRoomUI();
             }
         }
 
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', () => {
-            new MultiplayerApp();
-        });
 
-        // Prevent context menu on mobile
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        
-        // Prevent zoom on double tap
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (e) => {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
+        function updateUsersList(usersArray) {
+            const usersListEl = document.getElementById('usersList');
+            usersListEl.innerHTML = usersArray.map(user => 
+                `<span class="user-item ${user === localUsername ? 'me' : ''}">${user}</span>`
+            ).join('');
+        }
+
+        function addChatMessage(author, message, isOwnMessage = false) {
+            const chatMessagesEl = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            if (isOwnMessage) {
+                messageDiv.classList.add('own-message');
             }
-            lastTouchEnd = now;
-        }, false);
+            if (author === 'System') { // System messages
+                 messageDiv.style.fontStyle = 'italic';
+                 messageDiv.style.color = 'rgba(255,255,255,0.7)';
+            }
+
+            const authorSpan = document.createElement('span');
+            authorSpan.className = 'message-author';
+            authorSpan.textContent = author === localUsername && isOwnMessage ? 'You' : author;
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'message-text';
+            textSpan.textContent = message; // Sanitize this if messages can contain HTML
+
+            messageDiv.appendChild(authorSpan);
+            messageDiv.appendChild(textSpan);
+            chatMessagesEl.appendChild(messageDiv);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && currentRoom && localUsername) {
+                socket.emit('chatMessage', {
+                    roomId: currentRoom,
+                    username: localUsername, // Send username with message
+                    message: message,
+                    // id: Date.now() // Client-side ID might not be best, server should ideally assign
+                });
+                // Add optimistically for current user
+                // addChatMessage(localUsername, message, true); // Server will echo it back, might cause duplicates
+                input.value = '';
+            } else if (!currentRoom) {
+                addChatMessage('System', 'You must be in a room to send messages.');
+            } else if (!localUsername) {
+                addChatMessage('System', 'Please set a username to send messages.');
+            }
+        }
+
+        // Canvas drawing functions
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            return [
+                (e.clientX - rect.left) * scaleX,
+                (e.clientY - rect.top) * scaleY
+            ];
+        }
+
+        function startDrawing(e) {
+            if (!currentRoom) return;
+            e.preventDefault(); // Prevent default actions, especially for touch
+            
+            isDrawing = true;
+            [lastX, lastY] = getMousePos(e);
+            currentPath = []; // Reset path for current stroke
+
+            if (currentTool === 'fill') {
+                performFloodFill(Math.floor(lastX), Math.floor(lastY)); // Use floor for pixel operations
+                // Emit fill event AFTER local drawing
+                socket.emit('canvasUpdate', {
+                    roomId: currentRoom,
+                    data: { tool: 'fill', x: Math.floor(lastX), y: Math.floor(lastY), color: document.getElementById('colorPicker').value }
+                });
+                saveCanvasState(); // Save after fill
+                isDrawing = false; // Fill is a one-shot operation
+                return;
+            }
+
+            // For brush and eraser, add the starting point
+            if (currentTool === 'brush' || currentTool === 'eraser') {
+                 // For single-click dots
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, document.getElementById('brushSize').value / 2, 0, Math.PI * 2);
+                ctx.fillStyle = currentTool === 'brush' ? document.getElementById('colorPicker').value : 'rgba(0,0,0,0)'; // Eraser needs transparency
+                if (currentTool === 'eraser') ctx.globalCompositeOperation = 'destination-out';
+                else ctx.globalCompositeOperation = 'source-over';
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over'; // Reset
+
+                currentPath.push({ x: lastX, y: lastY}); // tool and color are part of the whole path data
+            }
+        }
+
+        function draw(e) {
+            if (!isDrawing || !currentRoom) return;
+            e.preventDefault();
+
+            const [currentX, currentY] = getMousePos(e);
+            const color = document.getElementById('colorPicker').value;
+            const size = document.getElementById('brushSize').value;
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round'; // Smoother lines
+
+            if (currentTool === 'brush') {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = color;
+                ctx.lineWidth = size;
+            } else if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out'; // Erases
+                ctx.lineWidth = size;
+                 // No strokeStyle needed for eraser with destination-out
+            } else {
+                return; // Not brush or eraser, do nothing on move
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            currentPath.push({ x: currentX, y: currentY });
+            [lastX, lastY] = [currentX, currentY];
+        }
+
+        function stopDrawing(e) {
+            if (!isDrawing || !currentRoom) return;
+            isDrawing = false;
+            e.preventDefault();
+
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+
+            if (currentPath.length > 0 && (currentTool === 'brush' || currentTool === 'eraser')) {
+                const drawData = {
+                    path: currentPath, // Contains {x, y} points
+                    color: document.getElementById('colorPicker').value, // For brush
+                    size: document.getElementById('brushSize').value,
+                    tool: currentTool
+                };
+
+                socket.emit('canvasUpdate', {
+                    roomId: currentRoom,
+                    data: drawData
+                });
+                saveCanvasState(); // Save after drawing locally
+            }
+            currentPath = []; // Clear path for next stroke
+        }
+
+        // This function is called when receiving data from others
+        function drawOnCanvas(data) {
+            if (!data || !data.path || data.path.length === 0) return;
+
+            const originalGCO = ctx.globalCompositeOperation;
+            const originalStrokeStyle = ctx.strokeStyle;
+            const originalLineWidth = ctx.lineWidth;
+            const originalLineCap = ctx.lineCap;
+            const originalLineJoin = ctx.lineJoin;
+
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (data.tool === 'brush') {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = data.color;
+                ctx.lineWidth = data.size;
+            } else if (data.tool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = data.size;
+            } else {
+                return; // Unknown tool for path drawing
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(data.path[0].x, data.path[0].y);
+            
+            if (data.path.length === 1) { // It's a dot
+                 ctx.fillStyle = data.tool === 'brush' ? data.color : 'rgba(0,0,0,0)';
+                 ctx.arc(data.path[0].x, data.path[0].y, data.size / 2, 0, Math.PI * 2);
+                 ctx.fill();
+            } else {
+                for (let i = 1; i < data.path.length; i++) {
+                    ctx.lineTo(data.path[i].x, data.path[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // Restore context
+            ctx.globalCompositeOperation = originalGCO;
+            ctx.strokeStyle = originalStrokeStyle;
+            ctx.lineWidth = originalLineWidth;
+            ctx.lineCap = originalLineCap;
+            ctx.lineJoin = originalLineJoin;
+            // Note: Remote draw operations do not call saveCanvasState(), local user's undo stack is separate.
+        }
+
+        // Renamed original floodFill to performFloodFill to distinguish from the event handler
+        function performFloodFill(startX, startY) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const startPos = (startY * canvas.width + startX) * 4;
+            const startR = data[startPos];
+            const startG = data[startPos + 1];
+            const startB = data[startPos + 2];
+            
+            const fillColorHex = document.getElementById('colorPicker').value;
+            const fillColorRgb = hexToRgb(fillColorHex);
+            if (!fillColorRgb) return; // Invalid hex
+
+            const [fillR, fillG, fillB] = fillColorRgb;
+
+            // If start color is same as fill color, do nothing
+            if (startR === fillR && startG === fillG && startB === fillB) return;
+
+            const pixelStack = [[startX, startY]];
+
+            while (pixelStack.length) {
+                const [x, y] = pixelStack.pop();
+                let currentPos = (y * canvas.width + x) * 4;
+
+                // Boundary checks
+                if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
+
+                // Color check
+                if (data[currentPos] === startR && data[currentPos + 1] === startG && data[currentPos + 2] === startB) {
+                    // Fill pixel
+                    data[currentPos] = fillR;
+                    data[currentPos + 1] = fillG;
+                    data[currentPos + 2] = fillB;
+                    data[currentPos + 3] = 255; // Alpha
+
+                    // Push neighbors
+                    pixelStack.push([x + 1, y]);
+                    pixelStack.push([x - 1, y]);
+                    pixelStack.push([x, y + 1]);
+                    pixelStack.push([x, y - 1]);
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [
+                parseInt(result[1], 16),
+                parseInt(result[2], 16),
+                parseInt(result[3], 16)
+            ] : null;
+        }
+
+
+        function handleImageUpload(e) {
+            if (!currentRoom) {
+                alert("Please join a room before importing an image.");
+                e.target.value = null; // Reset file input
+                return;
+            }
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Draw image to canvas (optionally clear first, or scale, etc.)
+                    // Example: Draw scaled to fit, preserving aspect ratio
+                    const hRatio = canvas.width / img.width;
+                    const vRatio = canvas.height / img.height;
+                    const ratio = Math.min(hRatio, vRatio, 1); // Don't scale up if image is smaller
+                    const centerX = (canvas.width - img.width * ratio) / 2;
+                    const centerY = (canvas.height - img.height * ratio) / 2;
+                    
+                    // Clear canvas before drawing new image? Or overlay?
+                    // ctx.clearRect(0, 0, canvas.width, canvas.height); // Optional clear
+                    ctx.drawImage(img, 0, 0, img.width, img.height, 
+                                  centerX, centerY, img.width * ratio, img.height * ratio);
+                    saveCanvasState();
+                    
+                    // Send to other users
+                    // Sending full DataURL can be large. Consider alternatives for performance.
+                    const imageDataUrl = canvas.toDataURL(); // Send current canvas state
+                    socket.emit('canvasUpdate', {
+                        roomId: currentRoom,
+                        data: { tool: 'image', imageData: imageDataUrl }
+                    });
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            e.target.value = null; // Reset file input for same file selection
+        }
+
+        function saveCanvasState() {
+            if (undoStack.length >= 50) undoStack.shift(); // Limit undo stack size
+            undoStack.push(canvas.toDataURL());
+            redoStack = []; // Clear redo stack whenever a new action is performed
+            // Update undo/redo button states
+            document.querySelector('.tool-btn[onclick="undo()"]').disabled = undoStack.length <= 1;
+            document.querySelector('.tool-btn[onclick="redo()"]').disabled = redoStack.length === 0;
+        }
+
+        function undo() {
+            if (undoStack.length > 1) { // Keep at least one state (initial)
+                redoStack.push(undoStack.pop());
+                const imageData = undoStack[undoStack.length - 1];
+                applyImageData(imageData, true); // true for local undo
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                const imageData = redoStack.pop();
+                undoStack.push(imageData);
+                applyImageData(imageData, true); // true for local redo
+            }
+        }
+        
+        function applyImageData(imageDataUrl, isLocalAction) {
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear before drawing
+                ctx.drawImage(img, 0, 0);
+                if (isLocalAction) { // Only emit if it's a local undo/redo action
+                    // Inform others about the new canvas state after undo/redo
+                    // This approach sends the entire canvas state.
+                    // More sophisticated would be to send undo/redo commands.
+                    socket.emit('canvasUpdate', {
+                        roomId: currentRoom,
+                        data: { tool: 'image', imageData: canvas.toDataURL() } // Effectively a full canvas sync
+                    });
+                }
+                // Update button states after image load, regardless of local or remote
+                document.querySelector('.tool-btn[onclick="undo()"]').disabled = undoStack.length <= 1;
+                document.querySelector('.tool-btn[onclick="redo()"]').disabled = redoStack.length === 0;
+            };
+            img.src = imageDataUrl;
+        }
+
+
+        function clearCanvas() {
+            if (!currentRoom) return;
+            if (confirm("Are you sure you want to clear the entire canvas for everyone?")) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                saveCanvasState();
+                socket.emit('clearCanvas', { roomId: currentRoom });
+            }
+        }
+
+        function downloadCanvas() {
+            const link = document.createElement('a');
+            link.download = `canvas-drawing-${currentRoom || 'shared'}.png`;
+            link.href = canvas.toDataURL('image/png'); // Specify PNG
+            link.click();
+        }
+
+        function loadRoomCanvas(canvasDataUrl) { // From server on join
+            if (canvasDataUrl) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    saveCanvasState(); // Save this as the initial state for this user
+                };
+                img.src = canvasDataUrl;
+            } else { // No existing data, clear and save initial state
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                saveCanvasState();
+            }
+        }
+
     </script>
 </body>
 </html>
