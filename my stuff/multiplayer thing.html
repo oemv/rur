@@ -1,4 +1,455 @@
-    <!-- ... (head and body up to the script tag) ... -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Canvas Chat - Firebase Auth (v9)</title>
+    
+    <!-- Lucide Icons - Place before your main script if lucide.createIcons() is called early -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --black: #000000;
+            --white: #FFFFFF;
+            --border-color: var(--white);
+            --text-color: var(--white);
+            --bg-color: var(--black);
+            --interactive-bg: var(--white);
+            --interactive-text: var(--black);
+            --interactive-border: var(--white);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* Helps prevent scrolling on canvas touch */
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-color);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg-color);
+        }
+
+        .header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .header h1, .header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .mobile-menu-btn { 
+            display: none; 
+            background: transparent;
+            color: var(--white);
+            border: 1px solid var(--white);
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            z-index: 101;
+        }
+        .mobile-menu-btn:hover {
+            background: var(--white);
+            color: var(--black);
+        }
+
+
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .room-list-section { 
+             flex: 1; display: flex; flex-direction: column;
+        }
+
+
+        .section h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom:15px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        .form-group input[type="text"]::placeholder,
+        .form-group input[type="password"]::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        .form-group input[type="checkbox"] {
+            margin-right: 8px;
+            accent-color: var(--white); 
+        }
+
+        button.primary-btn, button.secondary-btn {
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button.primary-btn {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border: 1px solid var(--interactive-border);
+        }
+        button.primary-btn:hover {
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        button.secondary-btn {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        button.secondary-btn:hover {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+        }
+
+        .room-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 0 20px 0; 
+        }
+
+        .room-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .room-item:hover {
+            border-color: var(--white);
+            background: rgba(255,255,255,0.1);
+        }
+        .room-item.active {
+            background: var(--interactive-bg);
+            color: var(--interactive-text);
+            border-color: var(--interactive-bg);
+        }
+        .room-item.active .room-name,
+        .room-item.active .room-info {
+             color: var(--interactive-text);
+        }
+
+        .room-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        .room-info {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .canvas-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 60px; 
+            overflow: hidden; /* Prevent scrollbars on wrapper, canvas handles its own if needed via code */
+            background: var(--white); 
+        }
+        #canvas {
+            display: block;
+            cursor: crosshair;
+            background: var(--white); 
+        }
+
+        .toolbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--bg-color);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 5px;
+            overflow-x: auto;
+        }
+        .tool-btn {
+            padding: 8px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            min-width: 40px; 
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .tool-btn svg { width: 20px; height: 20px; }
+        .tool-btn:hover { background: var(--interactive-bg); color: var(--interactive-text); }
+        .tool-btn.active { background: var(--interactive-bg); color: var(--interactive-text); border-color: var(--interactive-bg); }
+        .tool-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg-color); color: var(--text-color); border-color: var(--border-color); }
+
+        input[type="color"], input[type="range"] { margin: 0 5px; }
+        input[type="color"] {
+            width: 36px; height: 36px; border: 1px solid var(--border-color);
+            padding: 2px; background: var(--bg-color); border-radius: 4px;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+        .size-slider { width: 100px; accent-color: var(--white); }
+
+        .chat-section { height: 250px; display: flex; flex-direction: column; background: var(--bg-color); }
+        .users-list {
+            padding: 10px 15px; border-bottom: 1px solid var(--border-color);
+            background: var(--bg-color); flex-shrink: 0;
+            white-space: nowrap; overflow-x: auto;
+        }
+        .user-item {
+            display: inline-block; padding: 4px 10px; margin: 2px;
+            background: var(--bg-color); color: var(--text-color);
+            border: 1px solid var(--border-color); border-radius: 15px; font-size: 12px;
+        }
+        .user-item.me { background: var(--white); color: var(--black); border-color: var(--white); }
+
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; }
+        .message {
+            margin-bottom: 10px; padding: 8px 12px; background: var(--bg-color);
+            border: 1px solid var(--border-color); border-radius: 6px;
+            font-size: 14px; max-width: 85%;
+        }
+        .message.own-message {
+            margin-left: auto; background: var(--interactive-bg);
+            color: var(--interactive-text); border-color: var(--interactive-bg);
+        }
+        .message.own-message .message-author{ color: var(--interactive-text); }
+        .message-author { font-weight: 600; color: var(--text-color); display: block; margin-bottom: 3px; }
+        .message-text { word-wrap: break-word; }
+
+        .chat-input-area { display: flex; padding: 15px; gap: 10px; border-top: 1px solid var(--border-color); }
+        .chat-input-area input[type="text"] {
+            flex: 1; padding: 10px 12px; border: 1px solid var(--border-color);
+            border-radius: 4px; font-size: 14px; background: var(--bg-color); color: var(--text-color);
+        }
+        .chat-input-area input[type="text"]::placeholder { color: rgba(255,255,255,0.5); }
+        .chat-input-area button {
+            padding: 10px; background: var(--interactive-bg); color: var(--interactive-text);
+            border: 1px solid var(--interactive-border); border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px;
+        }
+        .chat-input-area button svg { width: 20px; height: 20px; }
+        .chat-input-area button:hover { background: var(--bg-color); color: var(--text-color); }
+
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85); display: flex;
+            align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        }
+        .modal-content {
+            background: var(--bg-color); padding: 25px; border-radius: 6px;
+            border: 1px solid var(--border-color); max-width: 400px; width: 100%;
+        }
+        .modal-content h3 { font-size: 18px; margin-bottom: 20px; color: var(--text-color); }
+        .modal-content .form-group { margin-bottom: 20px; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%; position: absolute; z-index: 100;
+                left: -100%; transition: left 0.3s ease-in-out; border-right: none; 
+            }
+            .sidebar.open { left: 0; }
+            .main-content { margin-left:0; }
+            .mobile-menu-btn { display: flex; position: absolute; top: 12px; left: 15px; }
+            .header h1, .header h2 { margin-left: 45px; } /* Space for menu button */
+        }
+        .selection-handles { position: absolute; pointer-events: none; }
+        .handle {
+            position: absolute; width: 8px; height: 8px; background: var(--white);
+            border: 1px solid var(--black); border-radius: 50%;
+            pointer-events: all; cursor: pointer;
+        }
+        .handle.rotate { background: var(--white); border-radius: 0; transform: rotate(45deg); }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <div class="sidebar" id="sidebar">
+            <div class="header">
+                <button class="mobile-menu-btn" onclick="window.toggleSidebar()">
+                    <i data-lucide="x"></i>
+                </button>
+                <h1>Canvas Rooms</h1>
+            </div>
+            
+            <div class="section">
+                <h3>Create Room</h3>
+                <div class="form-group">
+                    <input type="text" id="roomNameInput" placeholder="Room name">
+                    <input type="text" id="usernameInput" placeholder="Your username">
+                    <label>
+                        <input type="checkbox" id="isPrivateCheckbox"> Private room
+                    </label>
+                </div>
+                <button class="primary-btn" onclick="window.createRoom()">
+                    <i data-lucide="plus-circle"></i> Create Room
+                </button>
+            </div>
+            
+            <div class="section room-list-section">
+                <h3>Active Rooms</h3>
+                <div class="room-list" id="roomList">
+                    <!-- Rooms will be populated by JS -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header main-header">
+                 <button class="mobile-menu-btn" id="mainMobileMenuBtn" onclick="window.toggleSidebar()">
+                    <i data-lucide="menu"></i>
+                </button>
+                <h2 id="currentRoomTitle">Canvas Area</h2>
+            </div>
+
+            <div class="canvas-container">
+                <div class="canvas-wrapper">
+                    <canvas id="canvas" width="1200" height="800"></canvas>
+                    <div class="selection-handles hidden" id="selectionHandles"></div>
+                </div>
+                
+                <div class="toolbar">
+                    <button class="tool-btn active" data-tool="brush" title="Brush"><i data-lucide="paint-brush"></i></button>
+                    <button class="tool-btn" data-tool="eraser" title="Eraser"><i data-lucide="eraser"></i></button>
+                    <button class="tool-btn" data-tool="fill" title="Fill Bucket"><i data-lucide="paint-bucket"></i></button>
+                    <button class="tool-btn" data-tool="select" title="Select"><i data-lucide="mouse-pointer-click"></i></button>
+                    <input type="color" id="colorPicker" value="#000000" title="Color Picker">
+                    <input type="range" id="brushSize" class="size-slider" min="1" max="50" value="5" title="Brush Size">
+                    <button class="tool-btn" onclick="window.undo()" title="Undo" disabled><i data-lucide="undo-2"></i></button>
+                    <button class="tool-btn" onclick="window.redo()" title="Redo" disabled><i data-lucide="redo-2"></i></button>
+                    <button class="tool-btn" onclick="window.clearCanvas()" title="Clear Canvas"><i data-lucide="trash-2"></i></button>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                    <button class="tool-btn" onclick="document.getElementById('imageUpload').click();" title="Import Image"><i data-lucide="image-plus"></i></button>
+                    <button class="tool-btn" onclick="window.downloadCanvas()" title="Download Image"><i data-lucide="download"></i></button>
+                </div>
+            </div>
+            
+            <div class="chat-section">
+                <div class="users-list" id="usersList">
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="messageInput" placeholder="Type a message...">
+                    <button onclick="window.sendMessage()" title="Send Message">
+                        <i data-lucide="send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal hidden" id="joinModal">
+        <div class="modal-content">
+            <h3 id="joinModalTitle">Join Room</h3>
+            <div class="form-group">
+                <input type="text" id="joinUsernameInput" placeholder="Enter your username">
+            </div>
+            <div class="form-group" id="joinPasswordGroup" style="display:none;">
+                <input type="password" id="joinRoomPasswordInput" placeholder="Room password">
+            </div>
+            <div class="modal-buttons">
+                <button class="secondary-btn" onclick="window.closeModal()">Cancel</button>
+                <button class="primary-btn" onclick="window.confirmJoinRoom()">
+                    <i data-lucide="log-in"></i> Join
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
@@ -6,7 +457,7 @@
             getAuth, 
             signInAnonymously, 
             onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js"; // Added Auth
+        } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js"; 
         import { 
             getDatabase, ref, set, onValue, push, remove,
             serverTimestamp, query, orderByChild, limitToLast, equalTo,
@@ -21,11 +472,12 @@
             messagingSenderId: "196493662290",
             appId: "1:196493662290:web:17546d72fed9a06677278b",
             measurementId: "G-0491BG4LP9"
+            // databaseURL: "https://liqrid-default-rtdb.firebaseio.com" // Add if needed
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const auth = getAuth(app); // Initialize Firebase Auth
+        const auth = getAuth(app); 
 
         // Global variables
         let canvas, ctx;
@@ -34,82 +486,58 @@
         let lastX = 0, lastY = 0;
         
         let localUsername = '';
-        let firebaseUser = null; // Will hold the authenticated user object (includes uid)
+        let firebaseUser = null; 
 
         let currentRoomId = null;
         let currentRoomData = null; 
 
         let undoStack = [];
         let redoStack = [];
-        let currentPath = [];
+        // let currentPath = []; // currentPath is re-initialized in startDrawing, not needed globally
 
-        // Firebase listeners (can be used to store unsubscribe functions if needed)
-        // let roomsListenerUnsubscribe = null; 
-        // let usersListenerUnsubscribe = null;
-        // etc.
-        
         let sidebarEl, appContainerEl, mainMobileMenuBtnEl, sidebarMobileMenuBtnEl, currentRoomTitleEl;
         let roomNameInputEl, usernameInputEl, isPrivateCheckboxEl;
         let joinUsernameInputEl, joinRoomPasswordInputEl, joinPasswordGroupEl, joinModalTitleEl;
-        let authStatusEl; // For displaying auth status
+        let authStatusEl; 
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Create an element to show auth status (optional)
             authStatusEl = document.createElement('div');
-            authStatusEl.style.position = 'fixed';
-            authStatusEl.style.bottom = '5px';
-            authStatusEl.style.left = '5px';
-            authStatusEl.style.padding = '5px 10px';
+            authStatusEl.style.position = 'fixed'; authStatusEl.style.bottom = '5px';
+            authStatusEl.style.left = '5px'; authStatusEl.style.padding = '5px 10px';
             authStatusEl.style.background = 'rgba(255,255,255,0.1)';
-            authStatusEl.style.border = '1px solid white';
-            authStatusEl.style.borderRadius = '3px';
-            authStatusEl.style.fontSize = '10px';
-            authStatusEl.style.zIndex = '2000';
+            authStatusEl.style.border = '1px solid white'; authStatusEl.style.borderRadius = '3px';
+            authStatusEl.style.fontSize = '10px'; authStatusEl.style.zIndex = '2000';
             document.body.appendChild(authStatusEl);
-
             initApp();
         });
 
         function initApp() {
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
-            
             cacheDOMElements();
-            
             document.getElementById('colorPicker').value = '#000000';
-
-            setupEventListeners(); // Event listeners that don't depend on auth state
+            setupEventListeners(); 
             setupCanvasEvents();
             setupMobileSupport();
             saveCanvasState(); 
-
             lucide.createIcons();
             
-            // Listen for auth state changes
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    // User is signed in anonymously.
-                    firebaseUser = user; // Store the user object
+                    firebaseUser = user; 
                     authStatusEl.textContent = `Authenticated (UID: ${user.uid.substring(0,6)}...)`;
                     authStatusEl.style.borderColor = 'lime';
-
-                    // Now that user is authenticated, we can load data that requires auth
                     listenToPublicRooms(); 
-                    
-                    const savedUsername = localStorage.getItem('canvasChatUsername_v9');
+                    const savedUsername = localStorage.getItem('canvasChatUsername_v9_auth');
                     if (savedUsername) {
                         usernameInputEl.value = savedUsername;
                         joinUsernameInputEl.value = savedUsername; 
                         localUsername = savedUsername;
-                    } else if (usernameInputEl.value) { // If user typed before auth
+                    } else if (usernameInputEl.value) { 
                         localUsername = usernameInputEl.value.trim();
-                        localStorage.setItem('canvasChatUsername_v9', localUsername);
+                        localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                     }
-                    
-                    // If was in a room before a page refresh, try to re-join (complex, skip for now)
-
                 } else {
-                    // User is signed out.
                     firebaseUser = null;
                     authStatusEl.textContent = 'Authenticating...';
                     authStatusEl.style.borderColor = 'orange';
@@ -119,12 +547,11 @@
                             console.error("Anonymous sign-in failed:", error);
                             authStatusEl.textContent = `Auth FAILED: ${error.code}`;
                             authStatusEl.style.borderColor = 'red';
-                            alert("Authentication failed. Please check your Firebase setup and console for errors. The app may not work correctly.");
+                            alert("Authentication failed. Please check your Firebase setup (Anonymous Auth enabled in console) and console for errors. The app may not work correctly.");
                         });
                 }
             });
         }
-
 
         function cacheDOMElements() {
             sidebarEl = document.getElementById('sidebar');
@@ -132,11 +559,9 @@
             mainMobileMenuBtnEl = document.getElementById('mainMobileMenuBtn');
             sidebarMobileMenuBtnEl = sidebarEl.querySelector('.mobile-menu-btn');
             currentRoomTitleEl = document.getElementById('currentRoomTitle');
-            
             roomNameInputEl = document.getElementById('roomNameInput');
             usernameInputEl = document.getElementById('usernameInput');
             isPrivateCheckboxEl = document.getElementById('isPrivateCheckbox');
-
             joinUsernameInputEl = document.getElementById('joinUsernameInput');
             joinRoomPasswordInputEl = document.getElementById('joinRoomPasswordInput');
             joinPasswordGroupEl = document.getElementById('joinPasswordGroup');
@@ -144,7 +569,6 @@
         }
 
         function setupEventListeners() {
-            // ... (same as before, ensure onclicks call window.funcName or are handled here)
              document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     if (!firebaseUser) { alert("Please wait for authentication."); return; }
@@ -154,30 +578,24 @@
                     canvas.style.cursor = currentTool === 'select' ? 'default' : 'crosshair';
                 });
             });
-
-            document.getElementById('imageUpload').addEventListener('change', (e) => window.handleImageUpload(e)); // Ensure window scope for event
+            document.getElementById('imageUpload').addEventListener('change', (e) => window.handleImageUpload(e));
             document.getElementById('messageInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    window.sendMessage();
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); }
             });
-
-            usernameInputEl.addEventListener('input', (e) => { // Use 'input' for real-time update
+            usernameInputEl.addEventListener('input', (e) => { 
                 localUsername = e.target.value.trim();
-                localStorage.setItem('canvasChatUsername_v9', localUsername);
+                localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                 joinUsernameInputEl.value = localUsername; 
             });
              joinUsernameInputEl.addEventListener('input', (e) => {
                 localUsername = e.target.value.trim();
-                localStorage.setItem('canvasChatUsername_v9', localUsername);
+                localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                 usernameInputEl.value = localUsername; 
             });
         }
         
         function listenToPublicRooms() {
-            if (!firebaseUser) return; // Don't listen if not authenticated
-
+            if (!firebaseUser) return; 
             const roomsQuery = query(ref(db, 'rooms'), orderByChild('metadata/isPrivate'), equalTo(false));
             onValue(roomsQuery, snapshot => {
                 const roomsData = snapshot.val() || {};
@@ -186,42 +604,29 @@
                 console.error("Error fetching public rooms:", error);
                 if (error.code === 'PERMISSION_DENIED') {
                     addChatMessage('System', 'Error: Cannot access rooms list. Check Firebase rules.');
-                } else {
-                    addChatMessage('System', 'Error fetching rooms list.');
-                }
+                } else { addChatMessage('System', 'Error fetching rooms list.'); }
             });
         }
 
         function updateRoomsList(roomsData) {
-            // ... (same as before)
             const roomListEl = document.getElementById('roomList');
             roomListEl.innerHTML = ''; 
             const roomIds = Object.keys(roomsData);
-
             if (roomIds.length === 0) {
                 roomListEl.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-style:italic;">No active public rooms.</p>';
                 return;
             }
-
             roomIds.forEach(roomId => {
                 const room = roomsData[roomId];
                 if (!room.metadata) return; 
-
                 const roomDiv = document.createElement('div');
                 roomDiv.className = 'room-item';
-                if (roomId === currentRoomId) {
-                    roomDiv.classList.add('active');
-                }
+                if (roomId === currentRoomId) roomDiv.classList.add('active');
                 const userCount = room.users ? Object.keys(room.users).length : 0;
-                roomDiv.innerHTML = `
-                    <div class="room-name">${room.metadata.name}</div>
-                    <div class="room-info">${userCount} user(s) online</div>
-                `;
+                roomDiv.innerHTML = `<div class="room-name">${room.metadata.name}</div><div class="room-info">${userCount} user(s) online</div>`;
                 roomDiv.addEventListener('click', () => {
                     if (!firebaseUser) { alert("Please wait for authentication to complete."); return; }
-                    if (currentRoomId !== roomId) {
-                        promptToJoinRoom(roomId, room.metadata);
-                    }
+                    if (currentRoomId !== roomId) promptToJoinRoom(roomId, room.metadata);
                 });
                 roomListEl.appendChild(roomDiv);
             });
@@ -229,56 +634,33 @@
         
         window.createRoom = function() { 
             if (!firebaseUser) { alert("Authentication required to create a room."); return; }
-
             const roomName = roomNameInputEl.value.trim();
             localUsername = usernameInputEl.value.trim(); 
             const isPrivate = isPrivateCheckboxEl.checked;
-
-            if (!roomName || !localUsername) {
-                alert('Please enter room name and your username.');
-                return;
-            }
-            localStorage.setItem('canvasChatUsername_v9', localUsername);
-
+            if (!roomName || !localUsername) { alert('Please enter room name and your username.'); return; }
+            localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
             let password = null;
             if (isPrivate) {
                 password = prompt('Enter room password (min 6 chars):');
-                if (!password || password.length < 6) {
-                    alert('Private rooms require a password of at least 6 characters.');
-                    return;
-                }
+                if (!password || password.length < 6) { alert('Private rooms require a password of at least 6 characters.'); return; }
             }
-            
-            if (currentRoomId) { 
-                leaveCurrentRoom();
-            }
-
+            if (currentRoomId) leaveCurrentRoom();
             const newRoomRef = push(ref(db, 'rooms'));
             const newRoomId = newRoomRef.key;
-
             const roomMetadata = {
-                name: roomName,
-                isPrivate: isPrivate,
-                creatorUsername: localUsername,
-                creatorId: firebaseUser.uid, // Use Firebase Auth UID
-                createdAt: serverTimestamp()
+                name: roomName, isPrivate: isPrivate, creatorUsername: localUsername,
+                creatorId: firebaseUser.uid, createdAt: serverTimestamp()
             };
-            if (isPrivate) {
-                roomMetadata.passwordHash = password; 
-            }
-
+            if (isPrivate) roomMetadata.passwordHash = password; 
             const initialCanvasState = canvas.toDataURL();
-
-            set(newRoomRef, {
-                metadata: roomMetadata,
-                fullCanvasDataUrl: initialCanvasState,
-            }).then(() => {
-                addChatMessage('System', `Room "${roomName}" created.`);
-                actuallyJoinRoom(newRoomId, roomMetadata, password);
-            }).catch(error => {
-                console.error("Error creating room:", error);
-                alert("Error creating room: " + error.message + ". Check Firebase rules and console.");
-            });
+            set(newRoomRef, { metadata: roomMetadata, fullCanvasDataUrl: initialCanvasState })
+                .then(() => {
+                    addChatMessage('System', `Room "${roomName}" created.`);
+                    actuallyJoinRoom(newRoomId, roomMetadata, password);
+                }).catch(error => {
+                    console.error("Error creating room:", error);
+                    alert("Error creating room: " + error.message + ". Check Firebase rules and console.");
+                });
         }
 
         let selectedRoomIdToJoin = null;
@@ -288,20 +670,10 @@
             if (!firebaseUser) { alert("Authentication required."); return; }
             if (!localUsername) {
                  const userVal = joinUsernameInputEl.value.trim() || usernameInputEl.value.trim();
-                 if (!userVal) {
-                    alert("Please enter your username in the sidebar or join dialog first.");
-                    joinUsernameInputEl.focus();
-                    return;
-                 }
-                 localUsername = userVal;
-                 localStorage.setItem('canvasChatUsername_v9', localUsername);
-            } else {
-                 joinUsernameInputEl.value = localUsername; 
-            }
-
-            selectedRoomIdToJoin = roomId; 
-            selectedRoomMetadataToJoin = roomMetadata;
-
+                 if (!userVal) { alert("Please enter your username in the sidebar or join dialog first."); joinUsernameInputEl.focus(); return; }
+                 localUsername = userVal; localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+            } else { joinUsernameInputEl.value = localUsername; }
+            selectedRoomIdToJoin = roomId; selectedRoomMetadataToJoin = roomMetadata;
             joinModalTitleEl.textContent = `Join Room: ${roomMetadata.name}`;
             joinPasswordGroupEl.style.display = roomMetadata.isPrivate ? 'block' : 'none';
             joinRoomPasswordInputEl.value = '';
@@ -312,19 +684,12 @@
             if (!firebaseUser) { alert("Authentication required."); return; }
             const password = joinRoomPasswordInputEl.value;
             localUsername = joinUsernameInputEl.value.trim(); 
-             if (!localUsername) {
-                alert("Please enter your username.");
-                return;
-            }
-            localStorage.setItem('canvasChatUsername_v9', localUsername);
-
+             if (!localUsername) { alert("Please enter your username."); return; }
+            localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
             if (selectedRoomMetadataToJoin.isPrivate) {
                 onValue(ref(db, `rooms/${selectedRoomIdToJoin}/metadata/passwordHash`), (snapshot) => {
                     const correctPassword = snapshot.val();
-                    if (password !== correctPassword) {
-                        alert('Incorrect password.');
-                        return;
-                    }
+                    if (password !== correctPassword) { alert('Incorrect password.'); return; }
                     if (currentRoomId) leaveCurrentRoom();
                     actuallyJoinRoom(selectedRoomIdToJoin, selectedRoomMetadataToJoin, password);
                 }, { onlyOnce: true }); 
@@ -336,27 +701,19 @@
 
         function actuallyJoinRoom(roomId, roomMeta, roomPasswordAttempt) {
             if (!firebaseUser) { console.error("Cannot join room: not authenticated."); return; }
-            currentRoomId = roomId;
-            currentRoomData = roomMeta; 
-
-            const userRefPath = `rooms/${currentRoomId}/users/${firebaseUser.uid}`; // Use Firebase Auth UID
+            currentRoomId = roomId; currentRoomData = roomMeta; 
+            const userRefPath = `rooms/${currentRoomId}/users/${firebaseUser.uid}`; 
             const userPresenceRef = ref(db, userRefPath);
-
             set(userPresenceRef, localUsername).then(() => {
                 const disconnectHandler = onDisconnect(userPresenceRef);
                 disconnectHandler.remove(); 
-                
                 currentRoomTitleEl.textContent = currentRoomData.name;
                 closeModal();
-                if (sidebarEl.classList.contains('open') && window.innerWidth <= 768) {
-                    toggleSidebar();
-                }
+                if (sidebarEl.classList.contains('open') && window.innerWidth <= 768) toggleSidebar();
                 addChatMessage('System', `You joined "${currentRoomData.name}".`);
-                
                 document.querySelectorAll('.room-item.active').forEach(el => el.classList.remove('active'));
                 const roomItemInList = Array.from(document.getElementById('roomList').children).find(child => child.textContent.includes(currentRoomData.name));
                 if (roomItemInList) roomItemInList.classList.add('active');
-
                 listenToRoomChanges();
             }).catch(error => {
                 console.error("Error joining room (setting user):", error);
@@ -367,43 +724,29 @@
         
         function leaveCurrentRoom() {
             if (!currentRoomId || !firebaseUser) return;
-
             addChatMessage('System', `You left "${currentRoomTitleEl.textContent}".`);
-            
-            // Explicitly detach listeners if you stored their unsubscribe functions
-            // e.g., if (usersListenerUnsubscribe) usersListenerUnsubscribe();
-
             const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
             const disconnectHandler = onDisconnect(userPresenceRef);
-            disconnectHandler.cancel(); 
-            remove(userPresenceRef);
-
-            currentRoomId = null;
-            currentRoomData = null;
+            disconnectHandler.cancel(); remove(userPresenceRef);
+            currentRoomId = null; currentRoomData = null;
             currentRoomTitleEl.textContent = 'Canvas Area';
             document.getElementById('usersList').innerHTML = '';
             document.getElementById('chatMessages').innerHTML = ''; 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            saveCanvasState(); 
-            updateRoomsList({}); 
+            saveCanvasState(); updateRoomsList({}); 
             if (firebaseUser) listenToPublicRooms(); 
         }
 
         function listenToRoomChanges() {
             if (!currentRoomId || !firebaseUser) return;
-
             const usersRefPath = `rooms/${currentRoomId}/users`;
             onValue(ref(db, usersRefPath), snapshot => {
                 const users = snapshot.val() || {};
                 updateUsersList(Object.values(users));
-                // Refresh public room list for user count (could be optimized)
                 onValue(ref(db, `rooms/${currentRoomId}/metadata/isPrivate`), (isPrivateSnap) => {
-                    if (!isPrivateSnap.val()) {
-                        if (firebaseUser) listenToPublicRooms(); 
-                    }
+                    if (!isPrivateSnap.val()) { if (firebaseUser) listenToPublicRooms(); }
                 }, { onlyOnce: true });
             });
-
             const chatQuery = query(ref(db, `rooms/${currentRoomId}/chatMessages`), orderByChild('timestamp'), limitToLast(50));
             onValue(chatQuery, snapshot => { 
                 document.getElementById('chatMessages').innerHTML = ''; 
@@ -412,26 +755,21 @@
                     if (msg) addChatMessage(msg.username, msg.message, msg.userId === firebaseUser.uid);
                 });
             });
-
             const canvasStateRefPath = `rooms/${currentRoomId}/fullCanvasDataUrl`;
             onValue(ref(db, canvasStateRefPath), snapshot => {
                 const imageDataUrl = snapshot.val();
-                if (imageDataUrl) {
-                    loadRoomCanvas(imageDataUrl);
-                }
+                if (imageDataUrl) loadRoomCanvas(imageDataUrl);
             });
         }
 
         function updateUsersList(usersArray) {
-            // ... (same as before)
             const usersListEl = document.getElementById('usersList');
             usersListEl.innerHTML = usersArray.map(user => 
-                `<span class="user-item ${user === localUsername ? 'me' : ''}">${user}</span>` // 'me' class might need adjustment if username isn't unique guarantee
+                `<span class="user-item ${user === localUsername ? 'me' : ''}">${user}</span>`
             ).join('');
         }
 
         function addChatMessage(author, message, isOwnMessage = false) {
-            // ... (same as before)
              const chatMessagesEl = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
@@ -446,8 +784,7 @@
             const textSpan = document.createElement('span');
             textSpan.className = 'message-text';
             textSpan.textContent = message; 
-            messageDiv.appendChild(authorSpan);
-            messageDiv.appendChild(textSpan);
+            messageDiv.appendChild(authorSpan); messageDiv.appendChild(textSpan);
             chatMessagesEl.appendChild(messageDiv);
             chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
         }
@@ -458,22 +795,15 @@
             const message = input.value.trim();
             if (message && currentRoomId && localUsername) {
                 push(ref(db, `rooms/${currentRoomId}/chatMessages`), {
-                    username: localUsername,
-                    userId: firebaseUser.uid, // Use Firebase Auth UID
-                    message: message,
-                    timestamp: serverTimestamp()
+                    username: localUsername, userId: firebaseUser.uid, 
+                    message: message, timestamp: serverTimestamp()
                 });
                 input.value = '';
-            } else if (!currentRoomId) {
-                addChatMessage('System', 'You must be in a room to send messages.');
-            } else if (!localUsername) {
-                addChatMessage('System', 'Please set a username to send messages.');
-            }
+            } else if (!currentRoomId) { addChatMessage('System', 'You must be in a room to send messages.');
+            } else if (!localUsername) { addChatMessage('System', 'Please set a username to send messages.'); }
         }
 
-        // --- Canvas Drawing Functions ---
-        // (largely same, ensure firebaseUser check before operations if they write to DB)
-        function getMousePos(e) { /* ... same ... */ 
+        function getMousePos(e) { 
             const rect = canvas.getBoundingClientRect();
             const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
             const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
@@ -484,68 +814,53 @@
 
         function startDrawing(e) {
             if (!currentRoomId || !firebaseUser) return;
-            // ... (rest of startDrawing is same) ...
-            e.preventDefault(); 
-            isDrawing = true;
+            e.preventDefault(); isDrawing = true;
             [lastX, lastY] = getMousePos(e);
-            currentPath = []; 
+            let currentPath = []; // Local to function, not global
             if (currentTool === 'fill') {
                 performFloodFill(Math.floor(lastX), Math.floor(lastY)); 
-                saveCanvasState(); 
-                updateFirebaseCanvas(); 
-                isDrawing = false; 
-                return;
+                saveCanvasState(); updateFirebaseCanvas(); isDrawing = false; return;
             }
             if (currentTool === 'brush' || currentTool === 'eraser') {
                 const size = parseFloat(document.getElementById('brushSize').value);
-                ctx.beginPath();
-                ctx.arc(lastX, lastY, size / 2, 0, Math.PI * 2);
+                ctx.beginPath(); ctx.arc(lastX, lastY, size / 2, 0, Math.PI * 2);
                 ctx.fillStyle = currentTool === 'brush' ? document.getElementById('colorPicker').value : 'rgba(0,0,0,0)';
                 if (currentTool === 'eraser') ctx.globalCompositeOperation = 'destination-out';
                 else ctx.globalCompositeOperation = 'source-over';
-                ctx.fill();
-                ctx.globalCompositeOperation = 'source-over'; 
-                currentPath.push({ x: lastX, y: lastY, tool: currentTool, color: ctx.fillStyle, size: size });
+                ctx.fill(); ctx.globalCompositeOperation = 'source-over'; 
+                // currentPath.push({ x: lastX, y: lastY, tool: currentTool, color: ctx.fillStyle, size: size }); // Path not used for fullCanvasDataUrl sync
             }
         }
 
         function draw(e) {
             if (!isDrawing || !currentRoomId || !firebaseUser) return;
-            // ... (rest of draw is same) ...
             e.preventDefault();
             const [currentX, currentY] = getMousePos(e);
             const color = document.getElementById('colorPicker').value;
             const size = parseFloat(document.getElementById('brushSize').value);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round'; 
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; 
             if (currentTool === 'brush') {
                 ctx.globalCompositeOperation = 'source-over';
-                ctx.strokeStyle = color;
-                ctx.lineWidth = size;
+                ctx.strokeStyle = color; ctx.lineWidth = size;
             } else if (currentTool === 'eraser') {
                 ctx.globalCompositeOperation = 'destination-out'; 
                 ctx.lineWidth = size;
             } else return;
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(currentX, currentY);
-            ctx.stroke();
-            currentPath.push({ x: currentX, y: currentY, tool: currentTool, color: color, size: size });
+            ctx.beginPath(); ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY); ctx.stroke();
+            // currentPath.push({ x: currentX, y: currentY, tool: currentTool, color: color, size: size });
             [lastX, lastY] = [currentX, currentY];
         }
 
         function stopDrawing(e) {
             if (!isDrawing && currentTool !== 'fill') return; 
             if (!currentRoomId || !firebaseUser) return;
-            // ... (rest of stopDrawing is same) ...
-            isDrawing = false;
-            if (e) e.preventDefault();
+            isDrawing = false; if (e) e.preventDefault();
             ctx.globalCompositeOperation = 'source-over';
-            if (currentPath.length > 0 || currentTool === 'fill') { 
-                saveCanvasState(); 
-                updateFirebaseCanvas(); 
-            }
-            currentPath = []; 
+            // if (currentPath.length > 0 || currentTool === 'fill') { // Always update for fill
+            saveCanvasState(); updateFirebaseCanvas(); 
+            // }
+            // currentPath = []; 
         }
         
         function updateFirebaseCanvas() {
@@ -560,16 +875,12 @@
                 });
         }
 
-        function performFloodFill(startX, startY) { /* ... same ... */ 
-             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            const startPos = (startY * canvas.width + startX) * 4;
-            const startR = data[startPos];
-            const startG = data[startPos + 1];
-            const startB = data[startPos + 2];
+        function performFloodFill(startX, startY) { 
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data; const startPos = (startY * canvas.width + startX) * 4;
+            const startR = data[startPos], startG = data[startPos + 1], startB = data[startPos + 2];
             const fillColorHex = document.getElementById('colorPicker').value;
-            const fillColorRgb = hexToRgb(fillColorHex);
-            if (!fillColorRgb) return; 
+            const fillColorRgb = hexToRgb(fillColorHex); if (!fillColorRgb) return; 
             const [fillR, fillG, fillB] = fillColorRgb;
             if (startR === fillR && startG === fillG && startB === fillB) return;
             const pixelStack = [[startX, startY]];
@@ -584,14 +895,13 @@
             }
             ctx.putImageData(imageData, 0, 0);
         }
-        function hexToRgb(hex) { /* ... same ... */ 
+        function hexToRgb(hex) { 
             const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
         }
 
         window.handleImageUpload = function(e) { 
             if (!currentRoomId || !firebaseUser) { alert("Please join a room and be authenticated."); e.target.value = null; return; }
-            // ... (rest of handleImageUpload is same) ...
             const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -608,14 +918,13 @@
             reader.readAsDataURL(file); e.target.value = null; 
         }
 
-        function saveCanvasState() { /* ... same ... */ 
+        function saveCanvasState() { 
             if (undoStack.length >= 20) undoStack.shift(); 
             undoStack.push(canvas.toDataURL());
             redoStack = []; updateUndoRedoButtons();
         }
         window.undo = function() { 
             if (!firebaseUser) return;
-            // ... (rest is same) ...
             if (undoStack.length > 1) { 
                 redoStack.push(undoStack.pop());
                 applyImageDataForUndoRedo(undoStack[undoStack.length - 1]);
@@ -623,14 +932,13 @@
         }
         window.redo = function() { 
             if (!firebaseUser) return;
-            // ... (rest is same) ...
             if (redoStack.length > 0) {
                 const imageData = redoStack.pop();
                 undoStack.push(imageData);
                 applyImageDataForUndoRedo(imageData);
             }
         }
-        function applyImageDataForUndoRedo(imageDataUrl) { /* ... same, calls updateFirebaseCanvas ... */ 
+        function applyImageDataForUndoRedo(imageDataUrl) { 
             const img = new Image();
             img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height); 
@@ -640,26 +948,25 @@
             };
             img.src = imageDataUrl;
         }
-        function updateUndoRedoButtons(){ /* ... same ... */ 
+        function updateUndoRedoButtons(){ 
             document.querySelector('.tool-btn[onclick="window.undo()"]').disabled = undoStack.length <= 1;
             document.querySelector('.tool-btn[onclick="window.redo()"]').disabled = redoStack.length === 0;
         }
 
         window.clearCanvas = function() { 
             if (!currentRoomId || !firebaseUser) return;
-            // ... (rest is same) ...
             if (confirm("Clear canvas for everyone?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 saveCanvasState(); updateFirebaseCanvas();
             }
         }
-        window.downloadCanvas = function() { /* ... same ... */ 
+        window.downloadCanvas = function() { 
             const link = document.createElement('a');
             link.download = `canvas-${currentRoomData ? currentRoomData.name.replace(/\s+/g, '_') : 'drawing'}.png`;
             link.href = canvas.toDataURL('image/png'); link.click();
         }
 
-        function loadRoomCanvas(canvasDataUrl) { /* ... same ... */ 
+        function loadRoomCanvas(canvasDataUrl) { 
             if (canvasDataUrl) {
                 const img = new Image();
                 img.onload = () => {
@@ -671,8 +978,7 @@
             } else { ctx.clearRect(0, 0, canvas.width, canvas.height); saveCanvasState(); }
         }
 
-        // --- UI & Mobile Functions (mostly same) ---
-        function setupMobileSupport() { /* ... same ... */ 
+        function setupMobileSupport() { 
             const isMobile = window.innerWidth <= 768;
             mainMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
             sidebarMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
@@ -681,42 +987,41 @@
         }
         window.addEventListener('resize', setupMobileSupport);
 
-        window.toggleSidebar = function() { /* ... same ... */ 
+        window.toggleSidebar = function() { 
             sidebarEl.classList.toggle('open'); appContainerEl.classList.toggle('sidebar-open');
             const sidebarIcon = sidebarMobileMenuBtnEl.querySelector('i');
             sidebarIcon.setAttribute('data-lucide', sidebarEl.classList.contains('open') ? 'x' : 'menu');
             lucide.createIcons(); 
         }
-        window.closeModal = function() { /* ... same ... */ 
+        window.closeModal = function() { 
             document.getElementById('joinModal').classList.add('hidden');
             joinRoomPasswordInputEl.value = '';
         }
         
-        function setupCanvasEvents() { /* ... (same as previous version, ensure onclicks call window.funcName) ... */ 
+        function setupCanvasEvents() { 
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
             canvas.addEventListener('mouseout', stopDrawing); 
-
             canvas.addEventListener('touchstart', (e) => { 
-                if (!firebaseUser) return;
+                if (!firebaseUser) return; e.preventDefault();
                 const touch = e.touches[0] || e.changedTouches[0];
                 const mockEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
                 startDrawing(mockEvent);
             }, { passive: false });
             canvas.addEventListener('touchmove', (e) => { 
-                if (!firebaseUser) return;
-                e.preventDefault(); 
+                if (!firebaseUser) return; e.preventDefault(); 
                 const touch = e.touches[0] || e.changedTouches[0];
                 const mockEvent = new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY });
                 draw(mockEvent);
             }, { passive: false });
             canvas.addEventListener('touchend', (e) => { 
-                if (!firebaseUser) return;
+                if (!firebaseUser) return; e.preventDefault();
                 const touch = e.changedTouches[0]; 
                 const mockEvent = new MouseEvent('mouseup', { clientX: touch.clientX, clientY: touch.clientY });
                 stopDrawing(mockEvent);
             }, { passive: false });
         }
     </script>
-    <!-- ... (rest of the body) ... -->
+</body>
+</html>
