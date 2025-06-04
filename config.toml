@@ -1,7 +1,10 @@
 baseURL = "https://rur.pages.dev/"
 languageCode = "en-us"
 title = "rur"
+
 disableKinds = ["RSS", "sitemap", "taxonomy", "taxonomyTerm"]
+
 [minify]
   [minify.tdewolff]
-    html = true
+    [minify.tdewolff.html]
+      keepWhitespace = false
