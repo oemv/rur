@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Canvas - Simpler Firebase</title>
+    <title>Multiplayer Canvas - Firebase Debug</title>
     
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -36,238 +36,103 @@
             color: var(--text-color);
             height: 100vh;
             overflow: hidden;
-            touch-action: none; /* Helps prevent scrolling on canvas touch */
+            touch-action: none; 
         }
 
-        .app-container {
-            display: flex;
-            height: 100vh;
-        }
-
+        .app-container { display: flex; height: 100vh; }
         .sidebar {
-            width: 280px;
-            background: var(--bg-color);
+            width: 280px; background: var(--bg-color);
             border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            display: flex; flex-direction: column; overflow: hidden;
         }
-
         .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: var(--bg-color);
+            flex: 1; display: flex; flex-direction: column;
+            overflow: hidden; background: var(--bg-color);
         }
-
         .header {
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
+            padding: 15px 20px; border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center;
         }
-
-        .header h1, .header h2 {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-color);
-        }
+        .header h1, .header h2 { font-size: 18px; font-weight: 600; color: var(--text-color); }
         .mobile-menu-btn { 
-            display: none; 
-            background: transparent;
-            color: var(--white);
-            border: 1px solid var(--white);
-            padding: 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 10px;
-            z-index: 101;
+            display: none; background: transparent; color: var(--white);
+            border: 1px solid var(--white); padding: 8px; border-radius: 4px;
+            cursor: pointer; margin-right: 10px; z-index: 101;
         }
-        .mobile-menu-btn:hover {
-            background: var(--white);
-            color: var(--black);
-        }
-
-
-        .section {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .section:last-child {
-            border-bottom: none;
-        }
-        .room-list-section { 
-             flex: 1; display: flex; flex-direction: column;
-        }
-
-
+        .mobile-menu-btn:hover { background: var(--white); color: var(--black); }
+        .section { padding: 20px; border-bottom: 1px solid var(--border-color); }
+        .section:last-child { border-bottom: none; }
+        .room-list-section { flex: 1; display: flex; flex-direction: column; }
         .section h3 {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-color);
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 14px; font-weight: 500; color: var(--text-color);
+            margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;
         }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom:15px;
+        .form-group { display: flex; flex-direction: column; gap: 10px; margin-bottom:15px; }
+        .form-group input[type="text"], .form-group input[type="password"] {
+            padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 4px;
+            font-size: 14px; background: var(--bg-color); color: var(--text-color);
         }
-
-        .form-group input[type="text"],
-        .form-group input[type="password"] {
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 14px;
-            background: var(--bg-color);
-            color: var(--text-color);
-        }
-        .form-group input[type="text"]::placeholder,
-        .form-group input[type="password"]::placeholder {
+        .form-group input[type="text"]::placeholder, .form-group input[type="password"]::placeholder {
             color: rgba(255,255,255,0.5);
         }
-
-
-        .form-group label {
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            color: var(--text-color);
-        }
-        .form-group input[type="checkbox"] {
-            margin-right: 8px;
-            accent-color: var(--white); 
-        }
-
+        .form-group label { display: flex; align-items: center; font-size: 14px; color: var(--text-color); }
+        .form-group input[type="checkbox"] { margin-right: 8px; accent-color: var(--white); }
         button.primary-btn, button.secondary-btn {
-            padding: 10px 12px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            padding: 10px 12px; border-radius: 4px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: background 0.2s, color 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         button.primary-btn {
-            background: var(--interactive-bg);
-            color: var(--interactive-text);
+            background: var(--interactive-bg); color: var(--interactive-text);
             border: 1px solid var(--interactive-border);
         }
-        button.primary-btn:hover {
-            background: var(--bg-color);
-            color: var(--text-color);
-        }
+        button.primary-btn:hover { background: var(--bg-color); color: var(--text-color); }
         button.secondary-btn {
-            background: var(--bg-color);
-            color: var(--text-color);
+            background: var(--bg-color); color: var(--text-color);
             border: 1px solid var(--border-color);
         }
-        button.secondary-btn:hover {
-            background: var(--interactive-bg);
-            color: var(--interactive-text);
-        }
-
-        .room-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0 0 20px 0; 
-        }
-
+        button.secondary-btn:hover { background: var(--interactive-bg); color: var(--interactive-text); }
+        .room-list { flex: 1; overflow-y: auto; padding: 0 0 20px 0; }
         .room-item {
-            padding: 12px;
-            margin-bottom: 8px;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
+            padding: 12px; margin-bottom: 8px; background: var(--bg-color);
+            border: 1px solid var(--border-color); border-radius: 4px;
+            cursor: pointer; transition: all 0.2s;
         }
-        .room-item:hover {
-            border-color: var(--white);
-            background: rgba(255,255,255,0.1);
-        }
+        .room-item:hover { border-color: var(--white); background: rgba(255,255,255,0.1); }
         .room-item.active {
-            background: var(--interactive-bg);
-            color: var(--interactive-text);
+            background: var(--interactive-bg); color: var(--interactive-text);
             border-color: var(--interactive-bg);
         }
-        .room-item.active .room-name,
-        .room-item.active .room-info {
-             color: var(--interactive-text);
-        }
-
-        .room-name {
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--text-color);
-        }
-        .room-info {
-            font-size: 12px;
-            color: rgba(255,255,255,0.7);
-            margin-top: 4px;
-        }
-
+        .room-item.active .room-name, .room-item.active .room-info { color: var(--interactive-text); }
+        .room-name { font-weight: 600; font-size: 14px; color: var(--text-color); }
+        .room-info { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; }
         .canvas-container {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
+            flex: 1; position: relative; overflow: hidden;
             border-bottom: 1px solid var(--border-color);
         }
         .canvas-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 60px; 
-            overflow: hidden; 
-            background: var(--white); 
+            position: absolute; top: 0; left: 0; right: 0; bottom: 60px; 
+            overflow: hidden; background: var(--white); 
         }
-        #canvas {
-            display: block;
-            cursor: crosshair;
-            background: var(--white); 
-        }
-
+        #canvas { display: block; cursor: crosshair; background: var(--white); }
         .toolbar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: var(--bg-color);
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            gap: 5px;
-            overflow-x: auto;
+            position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+            background: var(--bg-color); display: flex; align-items: center;
+            padding: 0 10px; gap: 5px; overflow-x: auto;
         }
         .tool-btn {
-            padding: 8px;
-            background: var(--bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            cursor: pointer;
-            min-width: 40px; 
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            padding: 8px; background: var(--bg-color); color: var(--text-color);
+            border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;
+            min-width: 40px; height: 40px; display: flex; align-items: center;
+            justify-content: center; transition: all 0.2s;
         }
         .tool-btn svg { width: 20px; height: 20px; }
         .tool-btn:hover { background: var(--interactive-bg); color: var(--interactive-text); }
         .tool-btn.active { background: var(--interactive-bg); color: var(--interactive-text); border-color: var(--interactive-bg); }
-        .tool-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg-color); color: var(--text-color); border-color: var(--border-color); }
-
+        .tool-btn:disabled {
+            opacity: 0.5; cursor: not-allowed; background: var(--bg-color);
+            color: var(--text-color); border-color: var(--border-color);
+        }
         input[type="color"], input[type="range"] { margin: 0 5px; }
         input[type="color"] {
             width: 36px; height: 36px; border: 1px solid var(--border-color);
@@ -276,7 +141,6 @@
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
         .size-slider { width: 100px; accent-color: var(--white); }
-
         .chat-section { height: 250px; display: flex; flex-direction: column; background: var(--bg-color); }
         .users-list {
             padding: 10px 15px; border-bottom: 1px solid var(--border-color);
@@ -289,7 +153,6 @@
             border: 1px solid var(--border-color); border-radius: 15px; font-size: 12px;
         }
         .user-item.me { background: var(--white); color: var(--black); border-color: var(--white); }
-
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; }
         .message {
             margin-bottom: 10px; padding: 8px 12px; background: var(--bg-color);
@@ -303,7 +166,6 @@
         .message.own-message .message-author{ color: var(--interactive-text); }
         .message-author { font-weight: 600; color: var(--text-color); display: block; margin-bottom: 3px; }
         .message-text { word-wrap: break-word; }
-
         .chat-input-area { display: flex; padding: 15px; gap: 10px; border-top: 1px solid var(--border-color); }
         .chat-input-area input[type="text"] {
             flex: 1; padding: 10px 12px; border: 1px solid var(--border-color);
@@ -318,7 +180,6 @@
         }
         .chat-input-area button svg { width: 20px; height: 20px; }
         .chat-input-area button:hover { background: var(--bg-color); color: var(--text-color); }
-
         .modal {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.85); display: flex;
@@ -332,9 +193,7 @@
         .modal-content h3 { font-size: 18px; margin-bottom: 20px; color: var(--text-color); }
         .modal-content .form-group { margin-bottom: 20px; }
         .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-
         .hidden { display: none !important; }
-
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%; position: absolute; z-index: 100;
@@ -343,7 +202,7 @@
             .sidebar.open { left: 0; }
             .main-content { margin-left:0; }
             .mobile-menu-btn { display: flex; position: absolute; top: 12px; left: 15px; }
-            .header h1, .header h2 { margin-left: 45px; } /* Space for menu button */
+            .header h1, .header h2 { margin-left: 45px; } 
         }
         .selection-handles { position: absolute; pointer-events: none; }
         .handle {
@@ -460,7 +319,7 @@
         import { 
             getDatabase, ref, set, onValue, push, remove,
             serverTimestamp, query, orderByChild, limitToLast, equalTo,
-            onDisconnect // Unsubscribe is implicitly handled by onValue returning a function
+            onDisconnect 
         } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
       
         const firebaseConfig = {
@@ -470,44 +329,37 @@
             storageBucket: "liqrid.appspot.com",
             messagingSenderId: "196493662290",
             appId: "1:196493662290:web:17546d72fed9a06677278b",
-            measurementId: "G-0491BG4LP9"
-            // databaseURL: "https://liqrid-default-rtdb.firebaseio.com" // Add if you suspect inference issues
+            measurementId: "G-0491BG4LP9",
+            // databaseURL: "https://liqrid-default-rtdb.firebaseio.com" // Ensure this matches your RTDB URL
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app); 
 
-        // --- Global App State ---
         let canvas, ctx;
         let currentTool = 'brush';
         let isDrawing = false;
         let lastX = 0, lastY = 0;
-        
         let localUsername = '';
-        let firebaseUser = null; // Holds the authenticated Firebase user object
-
+        let firebaseUser = null; 
         let currentRoomId = null;
-        let currentRoomData = null; // Holds metadata of the current room
-
+        let currentRoomData = null; 
         let undoStack = [];
         let redoStack = [];
 
-        // --- Firebase Listener Unsubscribe Functions ---
         let roomsListListenerUnsubscribe = null;
         let roomUsersListenerUnsubscribe = null;
         let roomChatListenerUnsubscribe = null;
         let roomCanvasListenerUnsubscribe = null;
         
-        // --- DOM Element Cache ---
         let sidebarEl, appContainerEl, mainMobileMenuBtnEl, sidebarMobileMenuBtnEl, currentRoomTitleEl;
         let roomNameInputEl, usernameInputEl, isPrivateCheckboxEl;
         let joinUsernameInputEl, joinRoomPasswordInputEl, joinPasswordGroupEl, joinModalTitleEl;
         let authStatusEl; 
 
-        // --- App Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            authStatusEl = document.createElement('div'); // Create auth status display
+            authStatusEl = document.createElement('div');
             authStatusEl.style.cssText = `
                 position: fixed; bottom: 5px; left: 5px; padding: 5px 10px;
                 background: rgba(255,255,255,0.1); border: 1px solid white;
@@ -517,23 +369,22 @@
         });
 
         function initAppLogic() {
-            console.log("initAppLogic called");
+            console.log("App Logic Initializing...");
             canvas = document.getElementById('canvas');
-            if (!canvas) { console.error("Canvas element not found!"); return; }
+            if (!canvas) { console.error("FATAL: Canvas element not found!"); return; }
             ctx = canvas.getContext('2d');
             
             cacheDOMElements();
-            if (!roomNameInputEl) { // Check a critical element from cache
-                 console.error("Critical DOM elements (e.g., roomNameInput) not found! Caching might have failed or HTML structure is wrong."); 
+            if (!roomNameInputEl) { 
+                 console.error("FATAL: Critical DOM elements (e.g., roomNameInput) not found! HTML structure might be broken or IDs incorrect."); 
                  return; 
             }
-
 
             document.getElementById('colorPicker').value = '#000000';
             setupGlobalEventListeners(); 
             setupCanvasInteractionEvents();
             setupMobileSupportUI();
-            saveCanvasState(); // Initial empty state
+            saveCanvasState(); 
             lucide.createIcons();
             
             onAuthStateChanged(auth, (user) => {
@@ -545,27 +396,24 @@
                     
                     const savedUsername = localStorage.getItem('canvasChatUsername_v9_auth');
                     if (savedUsername) {
-                        usernameInputEl.value = savedUsername;
-                        joinUsernameInputEl.value = savedUsername; 
                         localUsername = savedUsername;
-                    } else if (usernameInputEl.value.trim()) { 
-                        localUsername = usernameInputEl.value.trim();
-                        localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                     } else {
                         const newUsername = prompt("Please enter your username:", "User" + Math.floor(Math.random() * 100));
                         if (newUsername && newUsername.trim()) {
                             localUsername = newUsername.trim();
                         } else {
-                            localUsername = "User" + Math.floor(Math.random() * 1000);
+                            localUsername = "User" + Math.floor(Math.random() * 1000); // Default if prompt is cancelled or empty
                         }
-                        usernameInputEl.value = localUsername;
-                        joinUsernameInputEl.value = localUsername;
-                        localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                     }
-                    console.log("User authenticated, username:", localUsername);
+                    usernameInputEl.value = localUsername; // Sync input fields
+                    joinUsernameInputEl.value = localUsername;
+                    localStorage.setItem('canvasChatUsername_v9_auth', localUsername); // Save/update
+
+                    console.log("User authenticated, username set to:", localUsername);
                     startListeningToPublicRooms(); 
                 } else {
                     firebaseUser = null;
+                    localUsername = ''; // Clear username if not authenticated
                     authStatusEl.textContent = 'Authenticating...';
                     authStatusEl.style.borderColor = 'orange';
                     console.log("User is signed out, attempting to sign in anonymously.");
@@ -574,18 +422,17 @@
                             console.error("Anonymous sign-in failed:", error);
                             authStatusEl.textContent = `Auth FAILED: ${error.code}`;
                             authStatusEl.style.borderColor = 'red';
-                            alert("Authentication failed: " + error.message + ". Ensure Anonymous Sign-In is enabled in your Firebase project and check your Firebase console for errors. The app may not work correctly.");
+                            alert("Authentication failed: " + error.message + ". Ensure Anonymous Sign-In is enabled in your Firebase project. Check console for details.");
                         });
                 }
             });
         }
 
         function cacheDOMElements() {
-            console.log("Caching DOM elements...");
             sidebarEl = document.getElementById('sidebar');
             appContainerEl = document.getElementById('appContainer');
             mainMobileMenuBtnEl = document.getElementById('mainMobileMenuBtn');
-            sidebarMobileMenuBtnEl = sidebarEl.querySelector('.mobile-menu-btn'); // Ensure sidebarEl is valid
+            if (sidebarEl) sidebarMobileMenuBtnEl = sidebarEl.querySelector('.mobile-menu-btn');
             currentRoomTitleEl = document.getElementById('currentRoomTitle');
             roomNameInputEl = document.getElementById('roomNameInput');
             usernameInputEl = document.getElementById('usernameInput');
@@ -594,7 +441,6 @@
             joinRoomPasswordInputEl = document.getElementById('joinRoomPasswordInput');
             joinPasswordGroupEl = document.getElementById('joinPasswordGroup');
             joinModalTitleEl = document.getElementById('joinModalTitle');
-            console.log("DOM elements cached. roomNameInputEl exists:", !!roomNameInputEl);
         }
 
         function setupGlobalEventListeners() {
@@ -611,14 +457,14 @@
             document.getElementById('messageInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); }
             });
-            usernameInputEl.addEventListener('input', (e) => { 
+            usernameInputEl.addEventListener('change', (e) => { // Use change, not input, to save on blur
                 localUsername = e.target.value.trim();
-                localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+                if(localUsername) localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                 joinUsernameInputEl.value = localUsername; 
             });
-             joinUsernameInputEl.addEventListener('input', (e) => {
+             joinUsernameInputEl.addEventListener('change', (e) => {
                 localUsername = e.target.value.trim();
-                localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+                if(localUsername) localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                 usernameInputEl.value = localUsername; 
             });
         }
@@ -638,7 +484,7 @@
                 console.error("Error fetching public rooms:", error);
                 if (error.code === 'PERMISSION_DENIED') {
                     addSystemMessageToChat('Error: Cannot access rooms list. Check Firebase rules.');
-                } else { addSystemMessageToChat('Error fetching rooms list.'); }
+                } else { addSystemMessageToChat('Error fetching public rooms: ' + error.message); }
             });
         }
 
@@ -670,7 +516,7 @@
         }
         
         window.createRoom = function() { 
-            console.log("window.createRoom function called.");
+            console.log("window.createRoom function called by button click.");
             if (!firebaseUser) { alert("Authentication required to create a room."); console.log("Create room aborted: not authenticated."); return; }
             if (!localUsername.trim()) { 
                 alert("Please set your username before creating a room.");
@@ -681,7 +527,7 @@
             const isPrivate = isPrivateCheckboxEl.checked;
             if (!roomName) { alert('Please enter a room name.'); console.log("Create room aborted: no room name."); return; }
             
-            console.log(`Creating room: ${roomName}, Private: ${isPrivate}, User: ${localUsername}`);
+            console.log(`Attempting to create room in Firebase: Name: ${roomName}, Private: ${isPrivate}, User: ${localUsername} (UID: ${firebaseUser.uid})`);
 
             let password = null;
             if (isPrivate) {
@@ -691,31 +537,41 @@
             
             if (currentRoomId) detachListenersAndLeaveCurrentRoom(); 
 
-            const newRoomRef = push(ref(db, 'rooms'));
+            const newRoomRef = push(ref(db, 'rooms')); // Generate new key for the room
             const newRoomId = newRoomRef.key;
-            console.log("New Room ID generated by Firebase:", newRoomId);
+            console.log("Firebase generated New Room ID:", newRoomId);
 
             const roomMetadata = {
                 name: roomName, isPrivate: isPrivate, creatorUsername: localUsername,
                 creatorId: firebaseUser.uid, createdAt: serverTimestamp()
             };
-            if (isPrivate) roomMetadata.passwordHash = password; 
+            if (isPrivate) roomMetadata.passwordHash = password; // INSECURE: FOR DEMO ONLY. HASH IN PRODUCTION.
             
-            const initialCanvasState = canvas.toDataURL();
+            const initialCanvasState = canvas.toDataURL(); // Get initial (empty) canvas state
 
-            set(newRoomRef, { metadata: roomMetadata, fullCanvasDataUrl: initialCanvasState, users: {}, chatMessages: {} })
+            // Data to be set for the new room
+            const newRoomData = { 
+                metadata: roomMetadata, 
+                fullCanvasDataUrl: initialCanvasState,
+                users: {}, // Initialize users object
+                chatMessages: {} // Initialize chatMessages object
+            };
+            
+            console.log("Data to be set for new room:", newRoomData);
+
+            set(newRoomRef, newRoomData)
                 .then(() => {
-                    console.log(`Room "${roomName}" created successfully in Firebase.`);
+                    console.log(`Room "${roomName}" (ID: ${newRoomId}) data SET successfully in Firebase.`);
                     addSystemMessageToChat(`Room "${roomName}" created.`);
-                    performJoinRoomLogic(newRoomId, roomMetadata); 
+                    performJoinRoomLogic(newRoomId, roomMetadata); // Automatically join the room after creation
                 }).catch(error => {
-                    console.error("Error creating room in Firebase:", error);
-                    alert("Error creating room: " + error.message + ". Check Firebase rules (especially for writing to /rooms path) and console logs for PERMISSION_DENIED errors.");
+                    console.error("FirebaseError - Error creating room in Firebase:", error);
+                    alert(`Error creating room: ${error.message}. Check Firebase rules (ensure authenticated users can write to /rooms/{newRoomId}) and browser console for PERMISSION_DENIED errors.`);
                 });
         }
 
-        // let selectedRoomIdToJoin = null; // Already declared globally
-        // let selectedRoomMetadataToJoin = null;
+        let selectedRoomIdToJoin = null;
+        let selectedRoomMetadataToJoin = null;
 
         function promptUserToJoinRoom(roomId, roomMetadata) {
             if (!firebaseUser) { alert("Authentication required."); return; }
@@ -759,7 +615,7 @@
             
             const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
             set(userPresenceRef, localUsername).then(() => { 
-                console.log(`User ${localUsername} added to room ${roomId} users list.`);
+                console.log(`User ${localUsername} added to room ${roomId} users list in Firebase.`);
                 const disconnectHandler = onDisconnect(userPresenceRef);
                 disconnectHandler.remove(); 
                 
@@ -770,29 +626,27 @@
                 
                 document.querySelectorAll('.room-item.active').forEach(el => el.classList.remove('active'));
                 const roomItems = document.getElementById('roomList').children;
-                for (let item of roomItems) {
+                for (let item of roomItems) { // Find and activate room item
                     if (item.querySelector('.room-name') && item.querySelector('.room-name').textContent === currentRoomData.name) {
-                         item.classList.add('active');
-                         break;
+                         item.classList.add('active'); break;
                     }
                 }
-                
                 startListeningToCurrentRoomChanges();
             }).catch(error => {
-                console.error("Error joining room (setting user presence):", error);
-                alert("Failed to join room. Check Firebase rules (especially for writing to /rooms/" + roomId + "/users path) and console. Error: " + error.message);
+                console.error("FirebaseError - Error joining room (setting user presence):", error);
+                alert(`Failed to join room. Check Firebase rules (ensure authenticated users can write to /rooms/${roomId}/users/${firebaseUser.uid}) and console. Error: ${error.message}`);
                 currentRoomId = null; currentRoomData = null; 
             });
         }
         
         function detachListenersAndLeaveCurrentRoom() {
             if (!currentRoomId || !firebaseUser) return;
-            console.log(`Leaving room ${currentRoomId}`);
+            console.log(`Leaving room ${currentRoomId}. Detaching listeners.`);
             addSystemMessageToChat(`You left "${currentRoomTitleEl.textContent}".`);
 
-            if (roomUsersListenerUnsubscribe) { roomUsersListenerUnsubscribe(); roomUsersListenerUnsubscribe = null; console.log("Detached users listener."); }
-            if (roomChatListenerUnsubscribe) { roomChatListenerUnsubscribe(); roomChatListenerUnsubscribe = null; console.log("Detached chat listener."); }
-            if (roomCanvasListenerUnsubscribe) { roomCanvasListenerUnsubscribe(); roomCanvasListenerUnsubscribe = null; console.log("Detached canvas listener."); }
+            if (roomUsersListenerUnsubscribe) { roomUsersListenerUnsubscribe(); roomUsersListenerUnsubscribe = null; console.log("Detached users listener for room:", currentRoomId); }
+            if (roomChatListenerUnsubscribe) { roomChatListenerUnsubscribe(); roomChatListenerUnsubscribe = null; console.log("Detached chat listener for room:", currentRoomId); }
+            if (roomCanvasListenerUnsubscribe) { roomCanvasListenerUnsubscribe(); roomCanvasListenerUnsubscribe = null; console.log("Detached canvas listener for room:", currentRoomId); }
 
             const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
             const disconnectHandler = onDisconnect(userPresenceRef);
@@ -805,8 +659,8 @@
             document.getElementById('chatMessages').innerHTML = ''; 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             saveCanvasState(); 
-            renderRoomsList({}); 
-            if (firebaseUser) startListeningToPublicRooms(); 
+            // renderRoomsList({}); // This might clear the list prematurely if listener isn't fast
+            if (firebaseUser) startListeningToPublicRooms(); // Re-fetch public rooms, which will update the list
         }
 
         function startListeningToCurrentRoomChanges() {
@@ -817,9 +671,9 @@
             if (roomUsersListenerUnsubscribe) roomUsersListenerUnsubscribe();
             roomUsersListenerUnsubscribe = onValue(ref(db, usersRefPath), snapshot => {
                 const users = snapshot.val() || {};
-                console.log("Room users update:", users);
+                console.log("Room users update for room", currentRoomId, ":", users);
                 renderUsersList(Object.values(users));
-                 if (currentRoomData && !currentRoomData.isPrivate) {
+                 if (currentRoomData && !currentRoomData.isPrivate) { // Update public list for user count changes
                     if (firebaseUser) startListeningToPublicRooms(); 
                  }
             });
@@ -827,6 +681,7 @@
             const chatQuery = query(ref(db, `rooms/${currentRoomId}/chatMessages`), orderByChild('timestamp'), limitToLast(50));
             if (roomChatListenerUnsubscribe) roomChatListenerUnsubscribe();
             roomChatListenerUnsubscribe = onValue(chatQuery, snapshot => { 
+                console.log("Chat update for room", currentRoomId);
                 document.getElementById('chatMessages').innerHTML = ''; 
                 snapshot.forEach(childSnapshot => {
                     const msg = childSnapshot.val();
@@ -838,7 +693,7 @@
             if (roomCanvasListenerUnsubscribe) roomCanvasListenerUnsubscribe();
             roomCanvasListenerUnsubscribe = onValue(ref(db, canvasStateRefPath), snapshot => {
                 const imageDataUrl = snapshot.val();
-                console.log("Canvas state update received for room " + currentRoomId + (imageDataUrl ? "" : " (no data/cleared)"));
+                console.log("Canvas state update received for room " + currentRoomId + (imageDataUrl ? " (has data)" : " (no data/cleared)"));
                 if (imageDataUrl) {
                     loadCanvasFromDataUrl(imageDataUrl);
                 } else { 
@@ -887,7 +742,7 @@
                     message: messageText, timestamp: serverTimestamp()
                 }).then(() => inputEl.value = '')
                   .catch(e => {
-                    console.error("Send message error:", e);
+                    console.error("FirebaseError - Send message error:", e);
                     alert("Error sending message: " + e.message);
                   });
             }
@@ -898,6 +753,7 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
             const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+            if (clientX === undefined || clientY === undefined) return [lastX, lastY]; // Fallback if no coords
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             return [(clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY];
@@ -944,8 +800,7 @@
 
         function stopDrawing(e) {
             if ((!isDrawing && currentTool !== 'fill') || !currentRoomId || !firebaseUser) {
-                isDrawing = false; 
-                return;
+                isDrawing = false; return;
             }
             isDrawing = false; 
             if (e) e.preventDefault();
@@ -955,12 +810,13 @@
         }
         
         function syncCanvasStateToFirebase() {
-            if (!currentRoomId || !firebaseUser) { console.log("Cannot sync canvas: no room or not authed."); return; }
-            console.log("Syncing canvas state to Firebase for room:", currentRoomId);
+            if (!currentRoomId || !firebaseUser) { console.warn("Cannot sync canvas: no room or not authed."); return; }
+            console.log("Attempting to sync canvas state to Firebase for room:", currentRoomId);
             const imageDataUrl = canvas.toDataURL(); 
             set(ref(db, `rooms/${currentRoomId}/fullCanvasDataUrl`), imageDataUrl)
+                .then(() => console.log("Canvas state synced successfully for room:", currentRoomId))
                 .catch(error => {
-                    console.error("Error updating canvas state in Firebase:", error);
+                    console.error("FirebaseError - Error updating canvas state in Firebase:", error);
                     if (error.code === 'PERMISSION_DENIED') {
                         addSystemMessageToChat('Error: Canvas update denied. Check Firebase rules.');
                     }
@@ -980,10 +836,13 @@
                 const [x, y] = q.shift();
                 if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
                 const currentPos = (y * canvas.width + x) * 4;
-                if (data[currentPos] === startR && data[currentPos+1] === startG && data[currentPos+2] === startB) {
-                    data[currentPos] = fillR; data[currentPos+1] = fillG; data[currentPos+2] = fillB; data[currentPos+3] = 255;
-                    q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+                // Check if pixel is already the fill color or not the target color
+                if ((data[currentPos] === fillR && data[currentPos+1] === fillG && data[currentPos+2] === fillB) ||
+                    (data[currentPos] !== startR || data[currentPos+1] !== startG || data[currentPos+2] !== startB) ) {
+                    continue;
                 }
+                data[currentPos] = fillR; data[currentPos+1] = fillG; data[currentPos+2] = fillB; data[currentPos+3] = 255;
+                q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
             }
             ctx.putImageData(imageData, 0, 0);
         }
@@ -1073,17 +932,18 @@
         // --- UI & Mobile Helper Functions ---
         function setupMobileSupportUI() { 
             const isMobile = window.innerWidth <= 768;
-            mainMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
-            sidebarMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
-            if (!isMobile) { sidebarEl.classList.remove('open'); appContainerEl.classList.remove('sidebar-open'); }
-            if (isMobile && sidebarEl.classList.contains('open')) { window.toggleSidebar(); }
+            if (mainMobileMenuBtnEl) mainMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
+            if (sidebarMobileMenuBtnEl) sidebarMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
+            if (!isMobile && sidebarEl) { sidebarEl.classList.remove('open'); appContainerEl.classList.remove('sidebar-open'); }
+            if (isMobile && sidebarEl && sidebarEl.classList.contains('open')) { window.toggleSidebar(); }
         }
         window.addEventListener('resize', setupMobileSupportUI);
 
         window.toggleSidebar = function() { 
+            if (!sidebarEl || !appContainerEl || !sidebarMobileMenuBtnEl) return;
             sidebarEl.classList.toggle('open'); appContainerEl.classList.toggle('sidebar-open');
             const sidebarIcon = sidebarMobileMenuBtnEl.querySelector('i');
-            sidebarIcon.setAttribute('data-lucide', sidebarEl.classList.contains('open') ? 'x' : 'menu');
+            if(sidebarIcon) sidebarIcon.setAttribute('data-lucide', sidebarEl.classList.contains('open') ? 'x' : 'menu');
             lucide.createIcons(); 
         }
         window.closeModal = function() { 
@@ -1099,12 +959,14 @@
             canvas.addEventListener('touchstart', (e) => { 
                 if (!firebaseUser || !currentRoomId) return; e.preventDefault();
                 const touch = e.touches[0] || e.changedTouches[0];
+                if (!touch) return;
                 const mockEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
                 startDrawing(mockEvent);
             }, { passive: false }); 
             canvas.addEventListener('touchmove', (e) => { 
                 if (!isDrawing || !firebaseUser || !currentRoomId) return; e.preventDefault(); 
                 const touch = e.touches[0] || e.changedTouches[0];
+                if (!touch) return;
                 const mockEvent = new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY });
                 draw(mockEvent);
             }, { passive: false });
