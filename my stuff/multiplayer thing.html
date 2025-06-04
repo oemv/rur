@@ -8,9 +8,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* --- CSS is the same as the previous version --- */
-        /* For brevity, I'll omit the full CSS block here. Assume it's identical to the one in the last full HTML response. */
-        /* Paste the full CSS from the previous response here */
         :root {
             --black: #000000;
             --white: #FFFFFF;
@@ -358,8 +355,6 @@
     </style>
 </head>
 <body>
-    <!-- --- HTML Body is the same as the previous version --- -->
-    <!-- Paste the full BODY from the previous response here -->
     <div class="app-container" id="appContainer">
         <div class="sidebar" id="sidebar">
             <div class="header">
@@ -465,7 +460,7 @@
         import { 
             getDatabase, ref, set, onValue, push, remove,
             serverTimestamp, query, orderByChild, limitToLast, equalTo,
-            onDisconnect, Unsubscribe // Added Unsubscribe for explicit listener detachment
+            onDisconnect // Unsubscribe is implicitly handled by onValue returning a function
         } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
       
         const firebaseConfig = {
@@ -499,13 +494,9 @@
         let redoStack = [];
 
         // --- Firebase Listener Unsubscribe Functions ---
-        /** @type {Unsubscribe | null} */
         let roomsListListenerUnsubscribe = null;
-        /** @type {Unsubscribe | null} */
         let roomUsersListenerUnsubscribe = null;
-        /** @type {Unsubscribe | null} */
         let roomChatListenerUnsubscribe = null;
-        /** @type {Unsubscribe | null} */
         let roomCanvasListenerUnsubscribe = null;
         
         // --- DOM Element Cache ---
@@ -532,7 +523,11 @@
             ctx = canvas.getContext('2d');
             
             cacheDOMElements();
-            if (!roomNameInputEl) { console.error("Critical DOM elements not found!"); return; }
+            if (!roomNameInputEl) { // Check a critical element from cache
+                 console.error("Critical DOM elements (e.g., roomNameInput) not found! Caching might have failed or HTML structure is wrong."); 
+                 return; 
+            }
+
 
             document.getElementById('colorPicker').value = '#000000';
             setupGlobalEventListeners(); 
@@ -557,19 +552,15 @@
                         localUsername = usernameInputEl.value.trim();
                         localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                     } else {
-                        // Prompt for username if not set and not in storage
-                        const newUsername = prompt("Please enter your username:", "AnonymousPainter");
+                        const newUsername = prompt("Please enter your username:", "User" + Math.floor(Math.random() * 100));
                         if (newUsername && newUsername.trim()) {
                             localUsername = newUsername.trim();
-                            usernameInputEl.value = localUsername;
-                            joinUsernameInputEl.value = localUsername;
-                            localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                         } else {
-                            // Default or handle cancellation
                             localUsername = "User" + Math.floor(Math.random() * 1000);
-                             usernameInputEl.value = localUsername;
-                            joinUsernameInputEl.value = localUsername;
                         }
+                        usernameInputEl.value = localUsername;
+                        joinUsernameInputEl.value = localUsername;
+                        localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
                     }
                     console.log("User authenticated, username:", localUsername);
                     startListeningToPublicRooms(); 
@@ -590,10 +581,11 @@
         }
 
         function cacheDOMElements() {
+            console.log("Caching DOM elements...");
             sidebarEl = document.getElementById('sidebar');
             appContainerEl = document.getElementById('appContainer');
             mainMobileMenuBtnEl = document.getElementById('mainMobileMenuBtn');
-            sidebarMobileMenuBtnEl = sidebarEl.querySelector('.mobile-menu-btn');
+            sidebarMobileMenuBtnEl = sidebarEl.querySelector('.mobile-menu-btn'); // Ensure sidebarEl is valid
             currentRoomTitleEl = document.getElementById('currentRoomTitle');
             roomNameInputEl = document.getElementById('roomNameInput');
             usernameInputEl = document.getElementById('usernameInput');
@@ -602,6 +594,7 @@
             joinRoomPasswordInputEl = document.getElementById('joinRoomPasswordInput');
             joinPasswordGroupEl = document.getElementById('joinPasswordGroup');
             joinModalTitleEl = document.getElementById('joinModalTitle');
+            console.log("DOM elements cached. roomNameInputEl exists:", !!roomNameInputEl);
         }
 
         function setupGlobalEventListeners() {
@@ -634,12 +627,12 @@
             if (!firebaseUser) { console.log("Cannot listen to rooms: not authenticated."); return; }
             console.log("Starting to listen to public rooms.");
             
-            if (roomsListListenerUnsubscribe) roomsListListenerUnsubscribe(); // Detach old listener
+            if (roomsListListenerUnsubscribe) roomsListListenerUnsubscribe(); 
 
             const roomsQuery = query(ref(db, 'rooms'), orderByChild('metadata/isPrivate'), equalTo(false));
             roomsListListenerUnsubscribe = onValue(roomsQuery, snapshot => {
                 const roomsData = snapshot.val() || {};
-                console.log("Public rooms data received:", roomsData);
+                console.log("Public rooms data received:", Object.keys(roomsData).length > 0 ? roomsData : "No public rooms");
                 renderRoomsList(roomsData);
             }, error => {
                 console.error("Error fetching public rooms:", error);
@@ -659,7 +652,7 @@
             }
             roomIds.forEach(roomId => {
                 const room = roomsData[roomId];
-                if (!room.metadata) return; 
+                if (!room.metadata) { console.warn("Room data missing metadata:", roomId, room); return; }
                 const roomDiv = document.createElement('div');
                 roomDiv.className = 'room-item';
                 if (roomId === currentRoomId) roomDiv.classList.add('active');
@@ -677,27 +670,26 @@
         }
         
         window.createRoom = function() { 
-            console.log("createRoom function called.");
-            if (!firebaseUser) { alert("Authentication required to create a room."); return; }
+            console.log("window.createRoom function called.");
+            if (!firebaseUser) { alert("Authentication required to create a room."); console.log("Create room aborted: not authenticated."); return; }
             if (!localUsername.trim()) { 
                 alert("Please set your username before creating a room.");
-                usernameInputEl.focus();
-                return;
+                usernameInputEl.focus(); console.log("Create room aborted: no username."); return;
             }
 
             const roomName = roomNameInputEl.value.trim();
             const isPrivate = isPrivateCheckboxEl.checked;
-            if (!roomName) { alert('Please enter a room name.'); return; }
+            if (!roomName) { alert('Please enter a room name.'); console.log("Create room aborted: no room name."); return; }
             
             console.log(`Creating room: ${roomName}, Private: ${isPrivate}, User: ${localUsername}`);
 
             let password = null;
             if (isPrivate) {
                 password = prompt('Enter room password (min 6 chars):');
-                if (!password || password.length < 6) { alert('Private rooms require a password of at least 6 characters.'); return; }
+                if (!password || password.length < 6) { alert('Private rooms require a password of at least 6 characters.'); console.log("Create private room aborted: invalid password."); return; }
             }
             
-            if (currentRoomId) detachListenersAndLeaveCurrentRoom(); // Leave current if in one
+            if (currentRoomId) detachListenersAndLeaveCurrentRoom(); 
 
             const newRoomRef = push(ref(db, 'rooms'));
             const newRoomId = newRoomRef.key;
@@ -707,7 +699,7 @@
                 name: roomName, isPrivate: isPrivate, creatorUsername: localUsername,
                 creatorId: firebaseUser.uid, createdAt: serverTimestamp()
             };
-            if (isPrivate) roomMetadata.passwordHash = password; // SUPER INSECURE, FOR DEMO ONLY
+            if (isPrivate) roomMetadata.passwordHash = password; 
             
             const initialCanvasState = canvas.toDataURL();
 
@@ -715,26 +707,25 @@
                 .then(() => {
                     console.log(`Room "${roomName}" created successfully in Firebase.`);
                     addSystemMessageToChat(`Room "${roomName}" created.`);
-                    performJoinRoomLogic(newRoomId, roomMetadata); // Join the room you just created
+                    performJoinRoomLogic(newRoomId, roomMetadata); 
                 }).catch(error => {
                     console.error("Error creating room in Firebase:", error);
-                    alert("Error creating room: " + error.message + ". Check Firebase rules and console logs for PERMISSION_DENIED errors.");
+                    alert("Error creating room: " + error.message + ". Check Firebase rules (especially for writing to /rooms path) and console logs for PERMISSION_DENIED errors.");
                 });
         }
 
-        let selectedRoomIdToJoin = null; // Temporary store for modal
-        let selectedRoomMetadataToJoin = null;
+        // let selectedRoomIdToJoin = null; // Already declared globally
+        // let selectedRoomMetadataToJoin = null;
 
         function promptUserToJoinRoom(roomId, roomMetadata) {
             if (!firebaseUser) { alert("Authentication required."); return; }
             if (!localUsername.trim()) { 
                 alert("Please set your username before joining a room.");
-                usernameInputEl.focus();
-                return;
+                usernameInputEl.focus(); return;
             }
             selectedRoomIdToJoin = roomId; selectedRoomMetadataToJoin = roomMetadata;
             joinModalTitleEl.textContent = `Join Room: ${roomMetadata.name}`;
-            joinUsernameInputEl.value = localUsername; // Pre-fill username
+            joinUsernameInputEl.value = localUsername; 
             joinPasswordGroupEl.style.display = roomMetadata.isPrivate ? 'block' : 'none';
             joinRoomPasswordInputEl.value = '';
             document.getElementById('joinModal').classList.remove('hidden');
@@ -745,11 +736,10 @@
             const passwordAttempt = joinRoomPasswordInputEl.value;
             const usernameForJoin = joinUsernameInputEl.value.trim(); 
              if (!usernameForJoin) { alert("Please enter your username."); return; }
-            localUsername = usernameForJoin; // Update local username from modal
+            localUsername = usernameForJoin; 
             localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
 
             if (selectedRoomMetadataToJoin.isPrivate) {
-                // INSECURE password check - for demo only
                 onValue(ref(db, `rooms/${selectedRoomIdToJoin}/metadata/passwordHash`), (snapshot) => {
                     const correctPasswordHash = snapshot.val();
                     if (passwordAttempt !== correctPasswordHash) { alert('Incorrect password.'); return; }
@@ -768,10 +758,10 @@
             currentRoomId = roomId; currentRoomData = roomMeta; 
             
             const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
-            set(userPresenceRef, localUsername).then(() => { // Add user to room's user list
+            set(userPresenceRef, localUsername).then(() => { 
                 console.log(`User ${localUsername} added to room ${roomId} users list.`);
                 const disconnectHandler = onDisconnect(userPresenceRef);
-                disconnectHandler.remove(); // Set up onDisconnect to remove user
+                disconnectHandler.remove(); 
                 
                 currentRoomTitleEl.textContent = currentRoomData.name;
                 closeModal();
@@ -779,14 +769,19 @@
                 addSystemMessageToChat(`You joined "${currentRoomData.name}".`);
                 
                 document.querySelectorAll('.room-item.active').forEach(el => el.classList.remove('active'));
-                const roomItemInList = Array.from(document.getElementById('roomList').children).find(child => child.textContent.includes(currentRoomData.name));
-                if (roomItemInList) roomItemInList.classList.add('active');
+                const roomItems = document.getElementById('roomList').children;
+                for (let item of roomItems) {
+                    if (item.querySelector('.room-name') && item.querySelector('.room-name').textContent === currentRoomData.name) {
+                         item.classList.add('active');
+                         break;
+                    }
+                }
                 
                 startListeningToCurrentRoomChanges();
             }).catch(error => {
                 console.error("Error joining room (setting user presence):", error);
-                alert("Failed to join room. Check Firebase rules (especially for writing to /users path) and console. Error: " + error.message);
-                currentRoomId = null; currentRoomData = null; // Reset state
+                alert("Failed to join room. Check Firebase rules (especially for writing to /rooms/" + roomId + "/users path) and console. Error: " + error.message);
+                currentRoomId = null; currentRoomData = null; 
             });
         }
         
@@ -795,66 +790,60 @@
             console.log(`Leaving room ${currentRoomId}`);
             addSystemMessageToChat(`You left "${currentRoomTitleEl.textContent}".`);
 
-            // Detach all listeners for the current room
-            if (roomUsersListenerUnsubscribe) roomUsersListenerUnsubscribe();
-            if (roomChatListenerUnsubscribe) roomChatListenerUnsubscribe();
-            if (roomCanvasListenerUnsubscribe) roomCanvasListenerUnsubscribe();
-            roomUsersListenerUnsubscribe = roomChatListenerUnsubscribe = roomCanvasListenerUnsubscribe = null;
+            if (roomUsersListenerUnsubscribe) { roomUsersListenerUnsubscribe(); roomUsersListenerUnsubscribe = null; console.log("Detached users listener."); }
+            if (roomChatListenerUnsubscribe) { roomChatListenerUnsubscribe(); roomChatListenerUnsubscribe = null; console.log("Detached chat listener."); }
+            if (roomCanvasListenerUnsubscribe) { roomCanvasListenerUnsubscribe(); roomCanvasListenerUnsubscribe = null; console.log("Detached canvas listener."); }
 
             const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
             const disconnectHandler = onDisconnect(userPresenceRef);
-            disconnectHandler.cancel(); // Cancel the onDisconnect handler since we're leaving gracefully
-            remove(userPresenceRef); // Remove user from Firebase
+            disconnectHandler.cancel(); 
+            remove(userPresenceRef).catch(e => console.warn("Error removing user on leave:", e));
 
             currentRoomId = null; currentRoomData = null;
             currentRoomTitleEl.textContent = 'Canvas Area';
             document.getElementById('usersList').innerHTML = '';
             document.getElementById('chatMessages').innerHTML = ''; 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            saveCanvasState(); // Reset local undo stack for the cleared canvas
-            renderRoomsList({}); // Force re-render of room list (will be repopulated by listener)
-            if (firebaseUser) startListeningToPublicRooms(); // Re-listen to public rooms
+            saveCanvasState(); 
+            renderRoomsList({}); 
+            if (firebaseUser) startListeningToPublicRooms(); 
         }
 
         function startListeningToCurrentRoomChanges() {
             if (!currentRoomId || !firebaseUser) { console.log("Cannot listen to room changes: no current room or not authenticated."); return;}
             console.log(`Starting to listen to changes in room ${currentRoomId}`);
 
-            // 1. Listen for users in the current room
             const usersRefPath = `rooms/${currentRoomId}/users`;
             if (roomUsersListenerUnsubscribe) roomUsersListenerUnsubscribe();
             roomUsersListenerUnsubscribe = onValue(ref(db, usersRefPath), snapshot => {
                 const users = snapshot.val() || {};
                 console.log("Room users update:", users);
                 renderUsersList(Object.values(users));
-                // Optional: update user count in public room list if this room's metadata is public
                  if (currentRoomData && !currentRoomData.isPrivate) {
-                    if (firebaseUser) startListeningToPublicRooms(); // This will refresh the public list including user counts
+                    if (firebaseUser) startListeningToPublicRooms(); 
                  }
             });
 
-            // 2. Listen for chat messages in the current room
             const chatQuery = query(ref(db, `rooms/${currentRoomId}/chatMessages`), orderByChild('timestamp'), limitToLast(50));
             if (roomChatListenerUnsubscribe) roomChatListenerUnsubscribe();
             roomChatListenerUnsubscribe = onValue(chatQuery, snapshot => { 
-                document.getElementById('chatMessages').innerHTML = ''; // Clear before re-rendering all
+                document.getElementById('chatMessages').innerHTML = ''; 
                 snapshot.forEach(childSnapshot => {
                     const msg = childSnapshot.val();
                     if (msg) renderChatMessage(msg.username, msg.message, msg.userId === firebaseUser.uid);
                 });
             });
 
-            // 3. Listen for full canvas state of the current room
             const canvasStateRefPath = `rooms/${currentRoomId}/fullCanvasDataUrl`;
             if (roomCanvasListenerUnsubscribe) roomCanvasListenerUnsubscribe();
             roomCanvasListenerUnsubscribe = onValue(ref(db, canvasStateRefPath), snapshot => {
                 const imageDataUrl = snapshot.val();
-                console.log("Canvas state update received for room " + currentRoomId);
+                console.log("Canvas state update received for room " + currentRoomId + (imageDataUrl ? "" : " (no data/cleared)"));
                 if (imageDataUrl) {
                     loadCanvasFromDataUrl(imageDataUrl);
-                } else { // If canvas data is null (e.g. new room before first draw)
+                } else { 
                     ctx.clearRect(0,0,canvas.width, canvas.height);
-                    saveCanvasState(); // Save empty state locally
+                    saveCanvasState(); 
                 }
             });
         }
@@ -884,7 +873,6 @@
         function addSystemMessageToChat(message) {
             renderChatMessage('System', message, false);
         }
-
 
         window.sendMessage = function() { 
             if (!firebaseUser) { alert("Authentication required to send messages."); return; }
@@ -919,17 +907,16 @@
             if (!currentRoomId || !firebaseUser) return;
             e.preventDefault(); isDrawing = true;
             [lastX, lastY] = getMousePos(e);
-            // currentPath removed as we sync full canvas
             if (currentTool === 'fill') {
                 performFloodFill(Math.floor(lastX), Math.floor(lastY)); 
-                saveCanvasState(); // Local undo
+                saveCanvasState(); 
                 syncCanvasStateToFirebase(); 
                 isDrawing = false; return;
             }
-            if (currentTool === 'brush' || currentTool === 'eraser') { // Draw a dot for single click
+            if (currentTool === 'brush' || currentTool === 'eraser') { 
                 const size = parseFloat(document.getElementById('brushSize').value);
                 ctx.beginPath(); ctx.arc(lastX, lastY, size / 2, 0, Math.PI * 2);
-                ctx.fillStyle = currentTool === 'brush' ? document.getElementById('colorPicker').value : 'rgba(0,0,0,0)'; // Eraser needs transparency
+                ctx.fillStyle = currentTool === 'brush' ? document.getElementById('colorPicker').value : 'rgba(0,0,0,0)';
                 if (currentTool === 'eraser') ctx.globalCompositeOperation = 'destination-out';
                 else ctx.globalCompositeOperation = 'source-over';
                 ctx.fill(); ctx.globalCompositeOperation = 'source-over'; 
@@ -956,22 +943,21 @@
         }
 
         function stopDrawing(e) {
-            // Only update Firebase if drawing actually happened or it was a fill operation
             if ((!isDrawing && currentTool !== 'fill') || !currentRoomId || !firebaseUser) {
-                isDrawing = false; // Ensure isDrawing is reset
+                isDrawing = false; 
                 return;
             }
             isDrawing = false; 
             if (e) e.preventDefault();
-            ctx.globalCompositeOperation = 'source-over'; // Reset composite operation
-            saveCanvasState(); // Save local state for undo/redo
+            ctx.globalCompositeOperation = 'source-over'; 
+            saveCanvasState(); 
             syncCanvasStateToFirebase(); 
         }
         
         function syncCanvasStateToFirebase() {
             if (!currentRoomId || !firebaseUser) { console.log("Cannot sync canvas: no room or not authed."); return; }
             console.log("Syncing canvas state to Firebase for room:", currentRoomId);
-            const imageDataUrl = canvas.toDataURL(); // Get current canvas state
+            const imageDataUrl = canvas.toDataURL(); 
             set(ref(db, `rooms/${currentRoomId}/fullCanvasDataUrl`), imageDataUrl)
                 .catch(error => {
                     console.error("Error updating canvas state in Firebase:", error);
@@ -988,8 +974,8 @@
             const fillColorHex = document.getElementById('colorPicker').value;
             const fillColorRgb = hexToRgb(fillColorHex); if (!fillColorRgb) return; 
             const [fillR, fillG, fillB] = fillColorRgb;
-            if (startR === fillR && startG === fillG && startB === fillB) return; // Clicked on already filled area
-            const q = [[startX, startY]]; // Use a queue for breadth-first
+            if (startR === fillR && startG === fillG && startB === fillB) return; 
+            const q = [[startX, startY]]; 
             while (q.length > 0) {
                 const [x, y] = q.shift();
                 if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
@@ -1049,7 +1035,7 @@
             img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height); 
                 ctx.drawImage(img, 0, 0);
-                if(firebaseUser && currentRoomId) syncCanvasStateToFirebase(); // Sync this undone/redone state
+                if(firebaseUser && currentRoomId) syncCanvasStateToFirebase(); 
                 updateUndoRedoButtonsUI();
             };
             img.src = imageDataUrl;
@@ -1077,7 +1063,6 @@
             const img = new Image();
             img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0);
-                // This is a remote update, so set it as the new base for local undo stack
                 undoStack = [canvas.toDataURL()]; redoStack = [];
                 updateUndoRedoButtonsUI();
             };
@@ -1110,15 +1095,13 @@
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing); // Stop drawing if mouse leaves canvas
-
-            // Touch events for basic drawing
+            canvas.addEventListener('mouseout', stopDrawing); 
             canvas.addEventListener('touchstart', (e) => { 
                 if (!firebaseUser || !currentRoomId) return; e.preventDefault();
                 const touch = e.touches[0] || e.changedTouches[0];
                 const mockEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
                 startDrawing(mockEvent);
-            }, { passive: false }); // passive:false to allow preventDefault
+            }, { passive: false }); 
             canvas.addEventListener('touchmove', (e) => { 
                 if (!isDrawing || !firebaseUser || !currentRoomId) return; e.preventDefault(); 
                 const touch = e.touches[0] || e.changedTouches[0];
@@ -1128,7 +1111,6 @@
             canvas.addEventListener('touchend', (e) => { 
                 if (!firebaseUser || !currentRoomId) return; e.preventDefault();
                 const touch = e.changedTouches[0]; 
-                 // If no touch object (e.g., mouseup simulated from touchend), use last known for safety
                 const clientX = touch ? touch.clientX : lastX; 
                 const clientY = touch ? touch.clientY : lastY;
                 const mockEvent = new MouseEvent('mouseup', { clientX: clientX, clientY: clientY });
