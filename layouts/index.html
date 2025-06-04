@@ -1,11 +1,1 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ .Title }}</title>
-</head>
-<body>
-  {{ .Content }}
-</body>
-</html>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>rur—Directory</title><style>body{background:#000;color:#fff;font-family:'Courier New',monospace;margin:0;padding:1rem}ul{list-style:none;padding:0}li{margin:4px 0}a{color:#fff;text-decoration:none}a:hover{text-decoration:underline}i{vertical-align:middle;margin-right:.5rem}</style><script src="https://unpkg.com/lucide/dist/lucide.min.js"></script></head><body><h1>📁 Repository Listing</h1><ul>{{range $e:=readDir "."}}{{ $n:=$e.Name }}{{if not (or (eq $n "content") (eq $n "layouts") (eq $n "config.toml"))}}<li>{{if $e.IsDir}}<i data-lucide="folder"></i><a href="/{{$n}}/">{{$n}}/</a>{{else}}<i data-lucide="file-text"></i><a href="/{{$n}}">{{$n}}</a>{{end}}</li>{{end}}{{end}}</ul><script>lucide.replace()</script></body></html>
