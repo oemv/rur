@@ -2,7 +2,7 @@ baseURL = "https://rur.pages.dev/"
 languageCode = "en-us"
 title = "rur"
 
-disableKinds = ["RSS", "sitemap", "taxonomy", "taxonomyTerm"]
+disableKinds = ["RSS", "sitemap", "taxonomy"]
 
 [minify]
   [minify.tdewolff]
