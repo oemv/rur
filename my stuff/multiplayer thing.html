@@ -1,1 +1,282 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport"content="width=device-width,initial-scale=1"><title>P2P Chat</title><style>body{background:#000;color:#fff;font-family:"Courier New",monospace;margin:0;padding:1rem}#chat{height:80vh;overflow:auto}#msg{width:100%;box-sizing:border-box;padding:.5rem;background:#111;border:none;color:#fff}</style><script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script></head><body><div id="chat"></div><input id="msg" placeholder="Type a message and hit enter..."/><script>var gun=Gun(),user="user"+Math.floor(Math.random()*1e6),chat=gun.get("chatroom");chat.map().on(function(d){if(d){var e=document.createElement("div");e.textContent=d.user+": "+d.text;document.getElementById("chat").appendChild(e);document.getElementById("chat").scrollTop=1e9;}});document.getElementById("msg").addEventListener("keydown",function(e){if(e.key==="Enter"&&this.value){chat.get(Date.now().toString()).put({user:user,text:this.value});this.value="";}});</script></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/><style>body,html{margin:0;padding:0;height:100%;overflow:hidden;background:#000;color:#fff;font-family:'Courier New',monospace}#app{display:flex;flex-direction:column;height:100%}#topbar{display:flex;background:#111;padding:.5rem;align-items:center}#rooms,#chat,#canvas-container{flex:1;overflow:hidden}#rooms{width:20%;min-width:200px;border-right:1px solid #333;display:flex;flex-direction:column}#chat{width:20%;min-width:200px;border-left:1px solid #333;display:flex;flex-direction:column}#main{flex:1;display:flex;flex-direction:row;overflow:hidden}h2{margin:.5rem 0;font-size:1rem}input,button,select{background:#222;color:#fff;border:1px solid #444;padding:.3rem;margin:.2rem 0}button{cursor:pointer}#room-list,#member-list,#msg-list,#canvas-tools{overflow:auto}#room-list div,#member-list div,#msg-list div{padding:.2rem .5rem;cursor:pointer}#room-list div:hover,#member-list div:hover{background:#333}#canvas-container{position:relative;flex:1;display:flex;flex-direction:column}#canvas{flex:1;border:1px solid #333;background:#fff}#canvas-tools{display:flex;flex-wrap:wrap;background:#111;padding:.5rem;border-top:1px solid #333}#canvas-tools > *{margin-right:.5rem;margin-bottom:.3rem}#msg-input{width:calc(100% - .7rem);box-sizing:border-box;padding:.3rem;border:1px solid #444;background:#222;color:#fff}#msg-send{padding:.3rem .6rem}</style>
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.2.4/dist/fabric.min.js"></script>
+<script src="https://unpkg.com/lucide/dist/lucide.min.js"></script>
+<title>P2P Chat & Canvas</title></head><body><div id="app">
+  <!-- Topbar with Room Creation -->
+  <div id="topbar">
+    <input id="room-name" placeholder="Room name" style="flex:1"/>
+    <select id="room-visibility"><option value="public">Public</option><option value="private">Private</option></select>
+    <button id="create-room">Create Room</button>
+  </div>
+  <div id="main">
+    <!-- Rooms List -->
+    <div id="rooms"><h2>Rooms</h2><div id="room-list"></div></div>
+    <!-- Canvas + Tools -->
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+      <div id="canvas-tools">
+        <select id="tool-select"><option value="brush">Brush</option><option value="eraser">Eraser</option><option value="fill">Fill</option><option value="select">Select</option></select>
+        <input type="color" id="color-picker" value="#000000"/>
+        <input type="number" id="brush-size" value="5" min="1" max="100" style="width:4rem"/>
+        <button id="import-img">Import Image</button>
+        <button id="undo">Undo</button>
+        <button id="redo">Redo</button>
+        <button id="download">Download PNG</button>
+      </div>
+    </div>
+    <!-- Chat -->
+    <div id="chat"><h2>Chat</h2><div id="msg-list" style="flex:1;overflow:auto"></div><input id="msg-input" placeholder="Type message..."/><button id="msg-send">Send</button></div>
+  </div>
+</div>
+
+<script>
+// === Initialization ===
+const gun = Gun({ peers: ['https://gun-manhattan.herokuapp.com/gun'] });
+const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+let currentRoom = null;
+let canvas, canvasHistory = [], historyIndex = -1, isApplyingRemote = false;
+
+// === UI Elements ===
+const roomListEl = document.getElementById('room-list');
+const memberListEl = document.getElementById('member-list');
+const msgListEl = document.getElementById('msg-list');
+const roomNameInput = document.getElementById('room-name');
+const roomVisSelect = document.getElementById('room-visibility');
+const createRoomBtn = document.getElementById('create-room');
+const msgInput = document.getElementById('msg-input');
+const msgSendBtn = document.getElementById('msg-send');
+
+// Canvas tools
+const toolSelect = document.getElementById('tool-select');
+const colorPicker = document.getElementById('color-picker');
+const brushSizeInput = document.getElementById('brush-size');
+const importImgBtn = document.getElementById('import-img');
+const undoBtn = document.getElementById('undo');
+const redoBtn = document.getElementById('redo');
+const downloadBtn = document.getElementById('download');
+
+// === Room Management ===
+const roomsNode = gun.get('rooms');
+function createRoom() {
+  const name = roomNameInput.value.trim();
+  if (!name) return alert('Enter room name');
+  const id = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+  roomsNode.get(id).put({ name, visibility: roomVisSelect.value, host: userId });
+  roomNameInput.value = '';
+}
+createRoomBtn.onclick = createRoom;
+
+// Render room list
+roomsNode.map().on((roomData, roomId) => {
+  if (!roomData) return;
+  let existing = document.getElementById(roomId);
+  if (!existing) {
+    existing = document.createElement('div');
+    existing.id = roomId;
+    roomListEl.appendChild(existing);
+    existing.onclick = () => joinRoom(roomId, roomData);
+  }
+  existing.textContent = roomData.name + (roomData.visibility==='private'?' 🔒':'');
+});
+
+// Join a room
+function joinRoom(roomId, roomData) {
+  if (currentRoom === roomId) return;
+  leaveRoom();
+  currentRoom = roomId;
+  roomDataNode = roomsNode.get(roomId);
+  // Add self to members
+  gun.get('members').get(roomId).get(userId).put(true);
+  setupChat(roomId);
+  setupCanvas(roomId);
+}
+
+// Leave current room
+function leaveRoom() {
+  if (!currentRoom) return;
+  gun.get('members').get(currentRoom).get(userId).put(null);
+  unsubscribeChat();
+  unsubscribeCanvas();
+  currentRoom = null;
+}
+
+// Listen for empty room => delete
+gun.get('members').map().on((val, id) => {
+  // no-op
+});
+gun.get('members').map().once((members, roomId) => {
+  gun.get('members').get(roomId).once(mobj => {
+    if (mobj) {
+      gun.get('members').get(roomId).on((v) => {
+        let hasAny = false;
+        Object.keys(v).forEach(k => { if (v[k] === true) hasAny = true; });
+        if (!hasAny) {
+          roomsNode.get(roomId).put(null);
+          gun.get('members').get(roomId).put(null);
+          gun.get('canvas').get(roomId).put(null);
+        }
+      });
+    }
+  });
+});
+
+// === Chat Functionality ===
+let chatRef, chatListener;
+function setupChat(roomId) {
+  msgListEl.innerHTML = '';
+  chatRef = gun.get('chat').get(roomId);
+  chatListener = chatRef.map().on(val => {
+    if (!val) return;
+    const div = document.createElement('div');
+    div.textContent = val.user + ': ' + val.text;
+    msgListEl.appendChild(div);
+    msgListEl.scrollTop = msgListEl.scrollHeight;
+  });
+}
+
+msgSendBtn.onclick = () => {
+  const text = msgInput.value.trim();
+  if (!text || !currentRoom) return;
+  chatRef.get(Date.now() + '_' + Math.random().toString(36).substr(2,5))
+    .put({ user: userId, text });
+  msgInput.value = '';
+};
+
+function unsubscribeChat() {
+  if (chatListener) chatListener.off();
+}
+
+// === Canvas Functionality ===
+function setupCanvas(roomId) {
+  // Initialize Fabric.js canvas
+  const cEl = document.getElementById('canvas');
+  canvas = new fabric.Canvas(cEl, { isDrawingMode: true, backgroundColor: '#fff' });
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Setup tools
+  toolSelect.onchange = () => {
+    const tool = toolSelect.value;
+    if (tool === 'brush') { canvas.isDrawingMode = true; canvas.freeDrawingBrush = new fabric.PencilBrush(canvas); }
+    else if (tool === 'eraser') { canvas.isDrawingMode = true; canvas.freeDrawingBrush = new fabric.EraserBrush(canvas); }
+    else { canvas.isDrawingMode = false; }
+  };
+  colorPicker.onchange = () => {
+    canvas.freeDrawingBrush.color = colorPicker.value;
+  };
+  brushSizeInput.onchange = () => {
+    canvas.freeDrawingBrush.width = parseInt(brushSizeInput.value, 10) || 1;
+  };
+  importImgBtn.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = () => {
+      const file = inp.files[0];
+      const reader = new FileReader();
+      reader.onload = e => {
+        fabric.Image.fromURL(e.target.result, img => {
+          img.set({ left: 50, top: 50, cornerStyle: 'circle', transparentCorners: false });
+          canvas.add(img).setActiveObject(img);
+          pushCanvasState();
+        });
+      };
+      reader.readAsDataURL(file);
+    };
+    inp.click();
+  };
+  undoBtn.onclick = () => {
+    if (historyIndex > 0) {
+      historyIndex--;
+      applyHistory();
+    }
+  };
+  redoBtn.onclick = () => {
+    if (historyIndex < canvasHistory.length - 1) {
+      historyIndex++;
+      applyHistory();
+    }
+  };
+  downloadBtn.onclick = () => {
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL({ format: 'png' });
+    link.download = 'canvas.png';
+    link.click();
+  };
+
+  // History management
+  function pushCanvasState() {
+    if (isApplyingRemote) return;
+    const state = canvas.toJSON(['selectable','eraser']);
+    canvasHistory = canvasHistory.slice(0, historyIndex + 1);
+    canvasHistory.push(state);
+    historyIndex = canvasHistory.length - 1;
+    broadcastCanvas(state);
+  }
+  function applyHistory() {
+    isApplyingRemote = true;
+    canvas.loadFromJSON(canvasHistory[historyIndex], () => {
+      canvas.renderAll();
+      isApplyingRemote = false;
+    });
+  }
+
+  // Broadcast/Receive via Gun
+  const canvasRef = gun.get('canvas').get(roomId);
+  canvas.on('object:added', pushCanvasState);
+  canvas.on('object:modified', pushCanvasState);
+  canvas.on('object:removed', pushCanvasState);
+  canvas.on('path:created', pushCanvasState);
+
+  // Listen for remote updates
+  canvasRef.on(data => {
+    if (!data) return;
+    if (historyIndex >= 0 && JSON.stringify(canvasHistory[historyIndex]) === JSON.stringify(data)) return;
+    canvasHistory.push(data);
+    historyIndex = canvasHistory.length - 1;
+    applyHistory();
+  });
+
+  // Initial load
+  canvasRef.once(data => {
+    if (data) {
+      canvasHistory = [data];
+      historyIndex = 0;
+      applyHistory();
+    } else {
+      pushCanvasState();
+    }
+  });
+}
+
+function unsubscribeCanvas() {
+  if (canvas) {
+    canvas.off('object:added');
+    canvas.off('object:modified');
+    canvas.off('object:removed');
+    canvas.off('path:created');
+    window.removeEventListener('resize', resizeCanvas);
+    canvas.clear();
+    canvasHistory = [];
+    historyIndex = -1;
+    canvas = null;
+  }
+}
+
+function resizeCanvas() {
+  if (!canvas) return;
+  const parent = document.getElementById('canvas-container');
+  canvas.setHeight(parent.clientHeight - document.getElementById('canvas-tools').clientHeight);
+  canvas.setWidth(parent.clientWidth);
+  canvas.renderAll();
+}
+
+// === Initial Room List Subscription ===
+roomsNode.open();
+
+// Prevent text selection on drag
+document.body.onselectstart = () => false;
+document.body.ondragstart = () => false;
+
+</script>
+</body></html>
