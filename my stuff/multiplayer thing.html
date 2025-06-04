@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Canvas Chat - Firebase Auth (v9)</title>
+    <title>Multiplayer Canvas - Simpler Firebase</title>
     
-    <!-- Lucide Icons - Place before your main script if lucide.createIcons() is called early -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
+        /* --- CSS is the same as the previous version --- */
+        /* For brevity, I'll omit the full CSS block here. Assume it's identical to the one in the last full HTML response. */
+        /* Paste the full CSS from the previous response here */
         :root {
             --black: #000000;
             --white: #FFFFFF;
@@ -228,7 +230,7 @@
             left: 0;
             right: 0;
             bottom: 60px; 
-            overflow: hidden; /* Prevent scrollbars on wrapper, canvas handles its own if needed via code */
+            overflow: hidden; 
             background: var(--white); 
         }
         #canvas {
@@ -356,6 +358,8 @@
     </style>
 </head>
 <body>
+    <!-- --- HTML Body is the same as the previous version --- -->
+    <!-- Paste the full BODY from the previous response here -->
     <div class="app-container" id="appContainer">
         <div class="sidebar" id="sidebar">
             <div class="header">
@@ -461,7 +465,7 @@
         import { 
             getDatabase, ref, set, onValue, push, remove,
             serverTimestamp, query, orderByChild, limitToLast, equalTo,
-            onDisconnect
+            onDisconnect, Unsubscribe // Added Unsubscribe for explicit listener detachment
         } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
       
         const firebaseConfig = {
@@ -472,71 +476,103 @@
             messagingSenderId: "196493662290",
             appId: "1:196493662290:web:17546d72fed9a06677278b",
             measurementId: "G-0491BG4LP9"
-            // databaseURL: "https://liqrid-default-rtdb.firebaseio.com" // Add if needed
+            // databaseURL: "https://liqrid-default-rtdb.firebaseio.com" // Add if you suspect inference issues
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app); 
 
-        // Global variables
+        // --- Global App State ---
         let canvas, ctx;
         let currentTool = 'brush';
         let isDrawing = false;
         let lastX = 0, lastY = 0;
         
         let localUsername = '';
-        let firebaseUser = null; 
+        let firebaseUser = null; // Holds the authenticated Firebase user object
 
         let currentRoomId = null;
-        let currentRoomData = null; 
+        let currentRoomData = null; // Holds metadata of the current room
 
         let undoStack = [];
         let redoStack = [];
-        // let currentPath = []; // currentPath is re-initialized in startDrawing, not needed globally
 
+        // --- Firebase Listener Unsubscribe Functions ---
+        /** @type {Unsubscribe | null} */
+        let roomsListListenerUnsubscribe = null;
+        /** @type {Unsubscribe | null} */
+        let roomUsersListenerUnsubscribe = null;
+        /** @type {Unsubscribe | null} */
+        let roomChatListenerUnsubscribe = null;
+        /** @type {Unsubscribe | null} */
+        let roomCanvasListenerUnsubscribe = null;
+        
+        // --- DOM Element Cache ---
         let sidebarEl, appContainerEl, mainMobileMenuBtnEl, sidebarMobileMenuBtnEl, currentRoomTitleEl;
         let roomNameInputEl, usernameInputEl, isPrivateCheckboxEl;
         let joinUsernameInputEl, joinRoomPasswordInputEl, joinPasswordGroupEl, joinModalTitleEl;
         let authStatusEl; 
 
+        // --- App Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            authStatusEl = document.createElement('div');
-            authStatusEl.style.position = 'fixed'; authStatusEl.style.bottom = '5px';
-            authStatusEl.style.left = '5px'; authStatusEl.style.padding = '5px 10px';
-            authStatusEl.style.background = 'rgba(255,255,255,0.1)';
-            authStatusEl.style.border = '1px solid white'; authStatusEl.style.borderRadius = '3px';
-            authStatusEl.style.fontSize = '10px'; authStatusEl.style.zIndex = '2000';
+            authStatusEl = document.createElement('div'); // Create auth status display
+            authStatusEl.style.cssText = `
+                position: fixed; bottom: 5px; left: 5px; padding: 5px 10px;
+                background: rgba(255,255,255,0.1); border: 1px solid white;
+                border-radius: 3px; font-size: 10px; z-index: 2000; color: white;`;
             document.body.appendChild(authStatusEl);
-            initApp();
+            initAppLogic();
         });
 
-        function initApp() {
+        function initAppLogic() {
+            console.log("initAppLogic called");
             canvas = document.getElementById('canvas');
+            if (!canvas) { console.error("Canvas element not found!"); return; }
             ctx = canvas.getContext('2d');
+            
             cacheDOMElements();
+            if (!roomNameInputEl) { console.error("Critical DOM elements not found!"); return; }
+
             document.getElementById('colorPicker').value = '#000000';
-            setupEventListeners(); 
-            setupCanvasEvents();
-            setupMobileSupport();
-            saveCanvasState(); 
+            setupGlobalEventListeners(); 
+            setupCanvasInteractionEvents();
+            setupMobileSupportUI();
+            saveCanvasState(); // Initial empty state
             lucide.createIcons();
             
             onAuthStateChanged(auth, (user) => {
+                console.log("Auth state changed. User:", user ? user.uid : "null");
                 if (user) {
                     firebaseUser = user; 
                     authStatusEl.textContent = `Authenticated (UID: ${user.uid.substring(0,6)}...)`;
                     authStatusEl.style.borderColor = 'lime';
-                    listenToPublicRooms(); 
+                    
                     const savedUsername = localStorage.getItem('canvasChatUsername_v9_auth');
                     if (savedUsername) {
                         usernameInputEl.value = savedUsername;
                         joinUsernameInputEl.value = savedUsername; 
                         localUsername = savedUsername;
-                    } else if (usernameInputEl.value) { 
+                    } else if (usernameInputEl.value.trim()) { 
                         localUsername = usernameInputEl.value.trim();
                         localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+                    } else {
+                        // Prompt for username if not set and not in storage
+                        const newUsername = prompt("Please enter your username:", "AnonymousPainter");
+                        if (newUsername && newUsername.trim()) {
+                            localUsername = newUsername.trim();
+                            usernameInputEl.value = localUsername;
+                            joinUsernameInputEl.value = localUsername;
+                            localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+                        } else {
+                            // Default or handle cancellation
+                            localUsername = "User" + Math.floor(Math.random() * 1000);
+                             usernameInputEl.value = localUsername;
+                            joinUsernameInputEl.value = localUsername;
+                        }
                     }
+                    console.log("User authenticated, username:", localUsername);
+                    startListeningToPublicRooms(); 
                 } else {
                     firebaseUser = null;
                     authStatusEl.textContent = 'Authenticating...';
@@ -547,7 +583,7 @@
                             console.error("Anonymous sign-in failed:", error);
                             authStatusEl.textContent = `Auth FAILED: ${error.code}`;
                             authStatusEl.style.borderColor = 'red';
-                            alert("Authentication failed. Please check your Firebase setup (Anonymous Auth enabled in console) and console for errors. The app may not work correctly.");
+                            alert("Authentication failed: " + error.message + ". Ensure Anonymous Sign-In is enabled in your Firebase project and check your Firebase console for errors. The app may not work correctly.");
                         });
                 }
             });
@@ -568,7 +604,7 @@
             joinModalTitleEl = document.getElementById('joinModalTitle');
         }
 
-        function setupEventListeners() {
+        function setupGlobalEventListeners() {
              document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     if (!firebaseUser) { alert("Please wait for authentication."); return; }
@@ -594,21 +630,26 @@
             });
         }
         
-        function listenToPublicRooms() {
-            if (!firebaseUser) return; 
+        function startListeningToPublicRooms() {
+            if (!firebaseUser) { console.log("Cannot listen to rooms: not authenticated."); return; }
+            console.log("Starting to listen to public rooms.");
+            
+            if (roomsListListenerUnsubscribe) roomsListListenerUnsubscribe(); // Detach old listener
+
             const roomsQuery = query(ref(db, 'rooms'), orderByChild('metadata/isPrivate'), equalTo(false));
-            onValue(roomsQuery, snapshot => {
+            roomsListListenerUnsubscribe = onValue(roomsQuery, snapshot => {
                 const roomsData = snapshot.val() || {};
-                updateRoomsList(roomsData);
+                console.log("Public rooms data received:", roomsData);
+                renderRoomsList(roomsData);
             }, error => {
                 console.error("Error fetching public rooms:", error);
                 if (error.code === 'PERMISSION_DENIED') {
-                    addChatMessage('System', 'Error: Cannot access rooms list. Check Firebase rules.');
-                } else { addChatMessage('System', 'Error fetching rooms list.'); }
+                    addSystemMessageToChat('Error: Cannot access rooms list. Check Firebase rules.');
+                } else { addSystemMessageToChat('Error fetching rooms list.'); }
             });
         }
 
-        function updateRoomsList(roomsData) {
+        function renderRoomsList(roomsData) {
             const roomListEl = document.getElementById('roomList');
             roomListEl.innerHTML = ''; 
             const roomIds = Object.keys(roomsData);
@@ -626,55 +667,74 @@
                 roomDiv.innerHTML = `<div class="room-name">${room.metadata.name}</div><div class="room-info">${userCount} user(s) online</div>`;
                 roomDiv.addEventListener('click', () => {
                     if (!firebaseUser) { alert("Please wait for authentication to complete."); return; }
-                    if (currentRoomId !== roomId) promptToJoinRoom(roomId, room.metadata);
+                    if (currentRoomId !== roomId) {
+                        console.log(`Attempting to join room: ${roomId}`);
+                        promptUserToJoinRoom(roomId, room.metadata);
+                    }
                 });
                 roomListEl.appendChild(roomDiv);
             });
         }
         
         window.createRoom = function() { 
+            console.log("createRoom function called.");
             if (!firebaseUser) { alert("Authentication required to create a room."); return; }
+            if (!localUsername.trim()) { 
+                alert("Please set your username before creating a room.");
+                usernameInputEl.focus();
+                return;
+            }
+
             const roomName = roomNameInputEl.value.trim();
-            localUsername = usernameInputEl.value.trim(); 
             const isPrivate = isPrivateCheckboxEl.checked;
-            if (!roomName || !localUsername) { alert('Please enter room name and your username.'); return; }
-            localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+            if (!roomName) { alert('Please enter a room name.'); return; }
+            
+            console.log(`Creating room: ${roomName}, Private: ${isPrivate}, User: ${localUsername}`);
+
             let password = null;
             if (isPrivate) {
                 password = prompt('Enter room password (min 6 chars):');
                 if (!password || password.length < 6) { alert('Private rooms require a password of at least 6 characters.'); return; }
             }
-            if (currentRoomId) leaveCurrentRoom();
+            
+            if (currentRoomId) detachListenersAndLeaveCurrentRoom(); // Leave current if in one
+
             const newRoomRef = push(ref(db, 'rooms'));
             const newRoomId = newRoomRef.key;
+            console.log("New Room ID generated by Firebase:", newRoomId);
+
             const roomMetadata = {
                 name: roomName, isPrivate: isPrivate, creatorUsername: localUsername,
                 creatorId: firebaseUser.uid, createdAt: serverTimestamp()
             };
-            if (isPrivate) roomMetadata.passwordHash = password; 
+            if (isPrivate) roomMetadata.passwordHash = password; // SUPER INSECURE, FOR DEMO ONLY
+            
             const initialCanvasState = canvas.toDataURL();
-            set(newRoomRef, { metadata: roomMetadata, fullCanvasDataUrl: initialCanvasState })
+
+            set(newRoomRef, { metadata: roomMetadata, fullCanvasDataUrl: initialCanvasState, users: {}, chatMessages: {} })
                 .then(() => {
-                    addChatMessage('System', `Room "${roomName}" created.`);
-                    actuallyJoinRoom(newRoomId, roomMetadata, password);
+                    console.log(`Room "${roomName}" created successfully in Firebase.`);
+                    addSystemMessageToChat(`Room "${roomName}" created.`);
+                    performJoinRoomLogic(newRoomId, roomMetadata); // Join the room you just created
                 }).catch(error => {
-                    console.error("Error creating room:", error);
-                    alert("Error creating room: " + error.message + ". Check Firebase rules and console.");
+                    console.error("Error creating room in Firebase:", error);
+                    alert("Error creating room: " + error.message + ". Check Firebase rules and console logs for PERMISSION_DENIED errors.");
                 });
         }
 
-        let selectedRoomIdToJoin = null;
+        let selectedRoomIdToJoin = null; // Temporary store for modal
         let selectedRoomMetadataToJoin = null;
 
-        function promptToJoinRoom(roomId, roomMetadata) {
+        function promptUserToJoinRoom(roomId, roomMetadata) {
             if (!firebaseUser) { alert("Authentication required."); return; }
-            if (!localUsername) {
-                 const userVal = joinUsernameInputEl.value.trim() || usernameInputEl.value.trim();
-                 if (!userVal) { alert("Please enter your username in the sidebar or join dialog first."); joinUsernameInputEl.focus(); return; }
-                 localUsername = userVal; localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
-            } else { joinUsernameInputEl.value = localUsername; }
+            if (!localUsername.trim()) { 
+                alert("Please set your username before joining a room.");
+                usernameInputEl.focus();
+                return;
+            }
             selectedRoomIdToJoin = roomId; selectedRoomMetadataToJoin = roomMetadata;
             joinModalTitleEl.textContent = `Join Room: ${roomMetadata.name}`;
+            joinUsernameInputEl.value = localUsername; // Pre-fill username
             joinPasswordGroupEl.style.display = roomMetadata.isPrivate ? 'block' : 'none';
             joinRoomPasswordInputEl.value = '';
             document.getElementById('joinModal').classList.remove('hidden');
@@ -682,102 +742,135 @@
         
         window.confirmJoinRoom = function() { 
             if (!firebaseUser) { alert("Authentication required."); return; }
-            const password = joinRoomPasswordInputEl.value;
-            localUsername = joinUsernameInputEl.value.trim(); 
-             if (!localUsername) { alert("Please enter your username."); return; }
+            const passwordAttempt = joinRoomPasswordInputEl.value;
+            const usernameForJoin = joinUsernameInputEl.value.trim(); 
+             if (!usernameForJoin) { alert("Please enter your username."); return; }
+            localUsername = usernameForJoin; // Update local username from modal
             localStorage.setItem('canvasChatUsername_v9_auth', localUsername);
+
             if (selectedRoomMetadataToJoin.isPrivate) {
+                // INSECURE password check - for demo only
                 onValue(ref(db, `rooms/${selectedRoomIdToJoin}/metadata/passwordHash`), (snapshot) => {
-                    const correctPassword = snapshot.val();
-                    if (password !== correctPassword) { alert('Incorrect password.'); return; }
-                    if (currentRoomId) leaveCurrentRoom();
-                    actuallyJoinRoom(selectedRoomIdToJoin, selectedRoomMetadataToJoin, password);
+                    const correctPasswordHash = snapshot.val();
+                    if (passwordAttempt !== correctPasswordHash) { alert('Incorrect password.'); return; }
+                    if (currentRoomId) detachListenersAndLeaveCurrentRoom();
+                    performJoinRoomLogic(selectedRoomIdToJoin, selectedRoomMetadataToJoin);
                 }, { onlyOnce: true }); 
             } else {
-                if (currentRoomId) leaveCurrentRoom();
-                actuallyJoinRoom(selectedRoomIdToJoin, selectedRoomMetadataToJoin);
+                if (currentRoomId) detachListenersAndLeaveCurrentRoom();
+                performJoinRoomLogic(selectedRoomIdToJoin, selectedRoomMetadataToJoin);
             }
         }
 
-        function actuallyJoinRoom(roomId, roomMeta, roomPasswordAttempt) {
+        function performJoinRoomLogic(roomId, roomMeta) {
             if (!firebaseUser) { console.error("Cannot join room: not authenticated."); return; }
+            console.log(`Performing join logic for room ${roomId}, user ${localUsername} (UID: ${firebaseUser.uid})`);
             currentRoomId = roomId; currentRoomData = roomMeta; 
-            const userRefPath = `rooms/${currentRoomId}/users/${firebaseUser.uid}`; 
-            const userPresenceRef = ref(db, userRefPath);
-            set(userPresenceRef, localUsername).then(() => {
+            
+            const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
+            set(userPresenceRef, localUsername).then(() => { // Add user to room's user list
+                console.log(`User ${localUsername} added to room ${roomId} users list.`);
                 const disconnectHandler = onDisconnect(userPresenceRef);
-                disconnectHandler.remove(); 
+                disconnectHandler.remove(); // Set up onDisconnect to remove user
+                
                 currentRoomTitleEl.textContent = currentRoomData.name;
                 closeModal();
-                if (sidebarEl.classList.contains('open') && window.innerWidth <= 768) toggleSidebar();
-                addChatMessage('System', `You joined "${currentRoomData.name}".`);
+                if (sidebarEl.classList.contains('open') && window.innerWidth <= 768) window.toggleSidebar();
+                addSystemMessageToChat(`You joined "${currentRoomData.name}".`);
+                
                 document.querySelectorAll('.room-item.active').forEach(el => el.classList.remove('active'));
                 const roomItemInList = Array.from(document.getElementById('roomList').children).find(child => child.textContent.includes(currentRoomData.name));
                 if (roomItemInList) roomItemInList.classList.add('active');
-                listenToRoomChanges();
+                
+                startListeningToCurrentRoomChanges();
             }).catch(error => {
-                console.error("Error joining room (setting user):", error);
-                alert("Failed to join room. Check Firebase rules and console. Error: " + error.message);
-                currentRoomId = null; currentRoomData = null;
+                console.error("Error joining room (setting user presence):", error);
+                alert("Failed to join room. Check Firebase rules (especially for writing to /users path) and console. Error: " + error.message);
+                currentRoomId = null; currentRoomData = null; // Reset state
             });
         }
         
-        function leaveCurrentRoom() {
+        function detachListenersAndLeaveCurrentRoom() {
             if (!currentRoomId || !firebaseUser) return;
-            addChatMessage('System', `You left "${currentRoomTitleEl.textContent}".`);
+            console.log(`Leaving room ${currentRoomId}`);
+            addSystemMessageToChat(`You left "${currentRoomTitleEl.textContent}".`);
+
+            // Detach all listeners for the current room
+            if (roomUsersListenerUnsubscribe) roomUsersListenerUnsubscribe();
+            if (roomChatListenerUnsubscribe) roomChatListenerUnsubscribe();
+            if (roomCanvasListenerUnsubscribe) roomCanvasListenerUnsubscribe();
+            roomUsersListenerUnsubscribe = roomChatListenerUnsubscribe = roomCanvasListenerUnsubscribe = null;
+
             const userPresenceRef = ref(db, `rooms/${currentRoomId}/users/${firebaseUser.uid}`);
             const disconnectHandler = onDisconnect(userPresenceRef);
-            disconnectHandler.cancel(); remove(userPresenceRef);
+            disconnectHandler.cancel(); // Cancel the onDisconnect handler since we're leaving gracefully
+            remove(userPresenceRef); // Remove user from Firebase
+
             currentRoomId = null; currentRoomData = null;
             currentRoomTitleEl.textContent = 'Canvas Area';
             document.getElementById('usersList').innerHTML = '';
             document.getElementById('chatMessages').innerHTML = ''; 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            saveCanvasState(); updateRoomsList({}); 
-            if (firebaseUser) listenToPublicRooms(); 
+            saveCanvasState(); // Reset local undo stack for the cleared canvas
+            renderRoomsList({}); // Force re-render of room list (will be repopulated by listener)
+            if (firebaseUser) startListeningToPublicRooms(); // Re-listen to public rooms
         }
 
-        function listenToRoomChanges() {
-            if (!currentRoomId || !firebaseUser) return;
+        function startListeningToCurrentRoomChanges() {
+            if (!currentRoomId || !firebaseUser) { console.log("Cannot listen to room changes: no current room or not authenticated."); return;}
+            console.log(`Starting to listen to changes in room ${currentRoomId}`);
+
+            // 1. Listen for users in the current room
             const usersRefPath = `rooms/${currentRoomId}/users`;
-            onValue(ref(db, usersRefPath), snapshot => {
+            if (roomUsersListenerUnsubscribe) roomUsersListenerUnsubscribe();
+            roomUsersListenerUnsubscribe = onValue(ref(db, usersRefPath), snapshot => {
                 const users = snapshot.val() || {};
-                updateUsersList(Object.values(users));
-                onValue(ref(db, `rooms/${currentRoomId}/metadata/isPrivate`), (isPrivateSnap) => {
-                    if (!isPrivateSnap.val()) { if (firebaseUser) listenToPublicRooms(); }
-                }, { onlyOnce: true });
+                console.log("Room users update:", users);
+                renderUsersList(Object.values(users));
+                // Optional: update user count in public room list if this room's metadata is public
+                 if (currentRoomData && !currentRoomData.isPrivate) {
+                    if (firebaseUser) startListeningToPublicRooms(); // This will refresh the public list including user counts
+                 }
             });
+
+            // 2. Listen for chat messages in the current room
             const chatQuery = query(ref(db, `rooms/${currentRoomId}/chatMessages`), orderByChild('timestamp'), limitToLast(50));
-            onValue(chatQuery, snapshot => { 
-                document.getElementById('chatMessages').innerHTML = ''; 
+            if (roomChatListenerUnsubscribe) roomChatListenerUnsubscribe();
+            roomChatListenerUnsubscribe = onValue(chatQuery, snapshot => { 
+                document.getElementById('chatMessages').innerHTML = ''; // Clear before re-rendering all
                 snapshot.forEach(childSnapshot => {
                     const msg = childSnapshot.val();
-                    if (msg) addChatMessage(msg.username, msg.message, msg.userId === firebaseUser.uid);
+                    if (msg) renderChatMessage(msg.username, msg.message, msg.userId === firebaseUser.uid);
                 });
             });
+
+            // 3. Listen for full canvas state of the current room
             const canvasStateRefPath = `rooms/${currentRoomId}/fullCanvasDataUrl`;
-            onValue(ref(db, canvasStateRefPath), snapshot => {
+            if (roomCanvasListenerUnsubscribe) roomCanvasListenerUnsubscribe();
+            roomCanvasListenerUnsubscribe = onValue(ref(db, canvasStateRefPath), snapshot => {
                 const imageDataUrl = snapshot.val();
-                if (imageDataUrl) loadRoomCanvas(imageDataUrl);
+                console.log("Canvas state update received for room " + currentRoomId);
+                if (imageDataUrl) {
+                    loadCanvasFromDataUrl(imageDataUrl);
+                } else { // If canvas data is null (e.g. new room before first draw)
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    saveCanvasState(); // Save empty state locally
+                }
             });
         }
 
-        function updateUsersList(usersArray) {
+        function renderUsersList(usersArray) {
             const usersListEl = document.getElementById('usersList');
             usersListEl.innerHTML = usersArray.map(user => 
                 `<span class="user-item ${user === localUsername ? 'me' : ''}">${user}</span>`
             ).join('');
         }
 
-        function addChatMessage(author, message, isOwnMessage = false) {
-             const chatMessagesEl = document.getElementById('chatMessages');
+        function renderChatMessage(author, message, isOwnMessage = false) {
+            const chatMessagesEl = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
             if (isOwnMessage) messageDiv.classList.add('own-message');
-            if (author === 'System') {
-                 messageDiv.style.fontStyle = 'italic';
-                 messageDiv.style.color = 'rgba(255,255,255,0.7)';
-            }
             const authorSpan = document.createElement('span');
             authorSpan.className = 'message-author';
             authorSpan.textContent = author === localUsername && isOwnMessage ? 'You' : author;
@@ -788,21 +881,31 @@
             chatMessagesEl.appendChild(messageDiv);
             chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
         }
+        function addSystemMessageToChat(message) {
+            renderChatMessage('System', message, false);
+        }
+
 
         window.sendMessage = function() { 
             if (!firebaseUser) { alert("Authentication required to send messages."); return; }
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-            if (message && currentRoomId && localUsername) {
+            if (!currentRoomId) { addSystemMessageToChat('You must be in a room to send messages.'); return; }
+            if (!localUsername.trim()) { addSystemMessageToChat('Please set your username to send messages.'); return; }
+            
+            const inputEl = document.getElementById('messageInput');
+            const messageText = inputEl.value.trim();
+            if (messageText) {
                 push(ref(db, `rooms/${currentRoomId}/chatMessages`), {
                     username: localUsername, userId: firebaseUser.uid, 
-                    message: message, timestamp: serverTimestamp()
-                });
-                input.value = '';
-            } else if (!currentRoomId) { addChatMessage('System', 'You must be in a room to send messages.');
-            } else if (!localUsername) { addChatMessage('System', 'Please set a username to send messages.'); }
+                    message: messageText, timestamp: serverTimestamp()
+                }).then(() => inputEl.value = '')
+                  .catch(e => {
+                    console.error("Send message error:", e);
+                    alert("Error sending message: " + e.message);
+                  });
+            }
         }
 
+        // --- Canvas Drawing Logic ---
         function getMousePos(e) { 
             const rect = canvas.getBoundingClientRect();
             const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
@@ -816,19 +919,20 @@
             if (!currentRoomId || !firebaseUser) return;
             e.preventDefault(); isDrawing = true;
             [lastX, lastY] = getMousePos(e);
-            let currentPath = []; // Local to function, not global
+            // currentPath removed as we sync full canvas
             if (currentTool === 'fill') {
                 performFloodFill(Math.floor(lastX), Math.floor(lastY)); 
-                saveCanvasState(); updateFirebaseCanvas(); isDrawing = false; return;
+                saveCanvasState(); // Local undo
+                syncCanvasStateToFirebase(); 
+                isDrawing = false; return;
             }
-            if (currentTool === 'brush' || currentTool === 'eraser') {
+            if (currentTool === 'brush' || currentTool === 'eraser') { // Draw a dot for single click
                 const size = parseFloat(document.getElementById('brushSize').value);
                 ctx.beginPath(); ctx.arc(lastX, lastY, size / 2, 0, Math.PI * 2);
-                ctx.fillStyle = currentTool === 'brush' ? document.getElementById('colorPicker').value : 'rgba(0,0,0,0)';
+                ctx.fillStyle = currentTool === 'brush' ? document.getElementById('colorPicker').value : 'rgba(0,0,0,0)'; // Eraser needs transparency
                 if (currentTool === 'eraser') ctx.globalCompositeOperation = 'destination-out';
                 else ctx.globalCompositeOperation = 'source-over';
                 ctx.fill(); ctx.globalCompositeOperation = 'source-over'; 
-                // currentPath.push({ x: lastX, y: lastY, tool: currentTool, color: ctx.fillStyle, size: size }); // Path not used for fullCanvasDataUrl sync
             }
         }
 
@@ -848,29 +952,31 @@
             } else return;
             ctx.beginPath(); ctx.moveTo(lastX, lastY);
             ctx.lineTo(currentX, currentY); ctx.stroke();
-            // currentPath.push({ x: currentX, y: currentY, tool: currentTool, color: color, size: size });
             [lastX, lastY] = [currentX, currentY];
         }
 
         function stopDrawing(e) {
-            if (!isDrawing && currentTool !== 'fill') return; 
-            if (!currentRoomId || !firebaseUser) return;
-            isDrawing = false; if (e) e.preventDefault();
-            ctx.globalCompositeOperation = 'source-over';
-            // if (currentPath.length > 0 || currentTool === 'fill') { // Always update for fill
-            saveCanvasState(); updateFirebaseCanvas(); 
-            // }
-            // currentPath = []; 
+            // Only update Firebase if drawing actually happened or it was a fill operation
+            if ((!isDrawing && currentTool !== 'fill') || !currentRoomId || !firebaseUser) {
+                isDrawing = false; // Ensure isDrawing is reset
+                return;
+            }
+            isDrawing = false; 
+            if (e) e.preventDefault();
+            ctx.globalCompositeOperation = 'source-over'; // Reset composite operation
+            saveCanvasState(); // Save local state for undo/redo
+            syncCanvasStateToFirebase(); 
         }
         
-        function updateFirebaseCanvas() {
-            if (!currentRoomId || !firebaseUser) return;
-            const imageDataUrl = canvas.toDataURL();
+        function syncCanvasStateToFirebase() {
+            if (!currentRoomId || !firebaseUser) { console.log("Cannot sync canvas: no room or not authed."); return; }
+            console.log("Syncing canvas state to Firebase for room:", currentRoomId);
+            const imageDataUrl = canvas.toDataURL(); // Get current canvas state
             set(ref(db, `rooms/${currentRoomId}/fullCanvasDataUrl`), imageDataUrl)
                 .catch(error => {
                     console.error("Error updating canvas state in Firebase:", error);
                     if (error.code === 'PERMISSION_DENIED') {
-                        addChatMessage('System', 'Error: Canvas update denied. Check Firebase rules.');
+                        addSystemMessageToChat('Error: Canvas update denied. Check Firebase rules.');
                     }
                 });
         }
@@ -882,16 +988,16 @@
             const fillColorHex = document.getElementById('colorPicker').value;
             const fillColorRgb = hexToRgb(fillColorHex); if (!fillColorRgb) return; 
             const [fillR, fillG, fillB] = fillColorRgb;
-            if (startR === fillR && startG === fillG && startB === fillB) return;
-            const pixelStack = [[startX, startY]];
-            while (pixelStack.length) {
-                const [x, y] = pixelStack.pop();
-                let currentPos = (y * canvas.width + x) * 4;
+            if (startR === fillR && startG === fillG && startB === fillB) return; // Clicked on already filled area
+            const q = [[startX, startY]]; // Use a queue for breadth-first
+            while (q.length > 0) {
+                const [x, y] = q.shift();
                 if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
-                if (data[currentPos] === fillR && data[currentPos+1] === fillG && data[currentPos+2] === fillB) continue;
-                if (data[currentPos] !== startR || data[currentPos + 1] !== startG || data[currentPos + 2] !== startB) continue;
-                data[currentPos] = fillR; data[currentPos + 1] = fillG; data[currentPos + 2] = fillB; data[currentPos + 3] = 255; 
-                pixelStack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+                const currentPos = (y * canvas.width + x) * 4;
+                if (data[currentPos] === startR && data[currentPos+1] === startG && data[currentPos+2] === startB) {
+                    data[currentPos] = fillR; data[currentPos+1] = fillG; data[currentPos+2] = fillB; data[currentPos+3] = 255;
+                    q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+                }
             }
             ctx.putImageData(imageData, 0, 0);
         }
@@ -901,7 +1007,7 @@
         }
 
         window.handleImageUpload = function(e) { 
-            if (!currentRoomId || !firebaseUser) { alert("Please join a room and be authenticated."); e.target.value = null; return; }
+            if (!currentRoomId || !firebaseUser) { alert("Please join a room and be authenticated to import images."); e.target.value = null; return; }
             const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -911,7 +1017,7 @@
                     const ratio = Math.min(hRatio, vRatio, 1); 
                     const centerX = (canvas.width - img.width * ratio) / 2, centerY = (canvas.height - img.height * ratio) / 2;
                     ctx.drawImage(img, 0, 0, img.width, img.height, centerX, centerY, img.width * ratio, img.height * ratio);
-                    saveCanvasState(); updateFirebaseCanvas();
+                    saveCanvasState(); syncCanvasStateToFirebase();
                 };
                 img.src = event.target.result;
             };
@@ -921,43 +1027,43 @@
         function saveCanvasState() { 
             if (undoStack.length >= 20) undoStack.shift(); 
             undoStack.push(canvas.toDataURL());
-            redoStack = []; updateUndoRedoButtons();
+            redoStack = []; updateUndoRedoButtonsUI();
         }
         window.undo = function() { 
-            if (!firebaseUser) return;
+            if (!firebaseUser || !currentRoomId) return;
             if (undoStack.length > 1) { 
                 redoStack.push(undoStack.pop());
-                applyImageDataForUndoRedo(undoStack[undoStack.length - 1]);
+                applyLocalCanvasStateForUndoRedo(undoStack[undoStack.length - 1]);
             }
         }
         window.redo = function() { 
-            if (!firebaseUser) return;
+            if (!firebaseUser || !currentRoomId) return;
             if (redoStack.length > 0) {
                 const imageData = redoStack.pop();
                 undoStack.push(imageData);
-                applyImageDataForUndoRedo(imageData);
+                applyLocalCanvasStateForUndoRedo(imageData);
             }
         }
-        function applyImageDataForUndoRedo(imageDataUrl) { 
+        function applyLocalCanvasStateForUndoRedo(imageDataUrl) { 
             const img = new Image();
             img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height); 
                 ctx.drawImage(img, 0, 0);
-                if(firebaseUser && currentRoomId) updateFirebaseCanvas(); 
-                updateUndoRedoButtons();
+                if(firebaseUser && currentRoomId) syncCanvasStateToFirebase(); // Sync this undone/redone state
+                updateUndoRedoButtonsUI();
             };
             img.src = imageDataUrl;
         }
-        function updateUndoRedoButtons(){ 
+        function updateUndoRedoButtonsUI(){ 
             document.querySelector('.tool-btn[onclick="window.undo()"]').disabled = undoStack.length <= 1;
             document.querySelector('.tool-btn[onclick="window.redo()"]').disabled = redoStack.length === 0;
         }
 
         window.clearCanvas = function() { 
-            if (!currentRoomId || !firebaseUser) return;
-            if (confirm("Clear canvas for everyone?")) {
+            if (!currentRoomId || !firebaseUser) { alert("Must be in a room and authenticated to clear canvas."); return; }
+            if (confirm("Clear canvas for everyone in this room?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                saveCanvasState(); updateFirebaseCanvas();
+                saveCanvasState(); syncCanvasStateToFirebase();
             }
         }
         window.downloadCanvas = function() { 
@@ -966,26 +1072,28 @@
             link.href = canvas.toDataURL('image/png'); link.click();
         }
 
-        function loadRoomCanvas(canvasDataUrl) { 
-            if (canvasDataUrl) {
-                const img = new Image();
-                img.onload = () => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0);
-                    undoStack = [canvas.toDataURL()]; redoStack = [];
-                    updateUndoRedoButtons();
-                };
-                img.src = canvasDataUrl;
-            } else { ctx.clearRect(0, 0, canvas.width, canvas.height); saveCanvasState(); }
+        function loadCanvasFromDataUrl(canvasDataUrl) { 
+            console.log("Loading canvas from data URL (remote update)");
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0);
+                // This is a remote update, so set it as the new base for local undo stack
+                undoStack = [canvas.toDataURL()]; redoStack = [];
+                updateUndoRedoButtonsUI();
+            };
+            img.onerror = () => { console.error("Error loading image from data URL for canvas.")}
+            img.src = canvasDataUrl;
         }
 
-        function setupMobileSupport() { 
+        // --- UI & Mobile Helper Functions ---
+        function setupMobileSupportUI() { 
             const isMobile = window.innerWidth <= 768;
             mainMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
             sidebarMobileMenuBtnEl.style.display = isMobile ? 'flex' : 'none';
             if (!isMobile) { sidebarEl.classList.remove('open'); appContainerEl.classList.remove('sidebar-open'); }
-            if (isMobile && sidebarEl.classList.contains('open')) { toggleSidebar(); }
+            if (isMobile && sidebarEl.classList.contains('open')) { window.toggleSidebar(); }
         }
-        window.addEventListener('resize', setupMobileSupport);
+        window.addEventListener('resize', setupMobileSupportUI);
 
         window.toggleSidebar = function() { 
             sidebarEl.classList.toggle('open'); appContainerEl.classList.toggle('sidebar-open');
@@ -998,27 +1106,32 @@
             joinRoomPasswordInputEl.value = '';
         }
         
-        function setupCanvasEvents() { 
+        function setupCanvasInteractionEvents() { 
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing); 
+            canvas.addEventListener('mouseout', stopDrawing); // Stop drawing if mouse leaves canvas
+
+            // Touch events for basic drawing
             canvas.addEventListener('touchstart', (e) => { 
-                if (!firebaseUser) return; e.preventDefault();
+                if (!firebaseUser || !currentRoomId) return; e.preventDefault();
                 const touch = e.touches[0] || e.changedTouches[0];
                 const mockEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
                 startDrawing(mockEvent);
-            }, { passive: false });
+            }, { passive: false }); // passive:false to allow preventDefault
             canvas.addEventListener('touchmove', (e) => { 
-                if (!firebaseUser) return; e.preventDefault(); 
+                if (!isDrawing || !firebaseUser || !currentRoomId) return; e.preventDefault(); 
                 const touch = e.touches[0] || e.changedTouches[0];
                 const mockEvent = new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY });
                 draw(mockEvent);
             }, { passive: false });
             canvas.addEventListener('touchend', (e) => { 
-                if (!firebaseUser) return; e.preventDefault();
+                if (!firebaseUser || !currentRoomId) return; e.preventDefault();
                 const touch = e.changedTouches[0]; 
-                const mockEvent = new MouseEvent('mouseup', { clientX: touch.clientX, clientY: touch.clientY });
+                 // If no touch object (e.g., mouseup simulated from touchend), use last known for safety
+                const clientX = touch ? touch.clientX : lastX; 
+                const clientY = touch ? touch.clientY : lastY;
+                const mockEvent = new MouseEvent('mouseup', { clientX: clientX, clientY: clientY });
                 stopDrawing(mockEvent);
             }, { passive: false });
         }
