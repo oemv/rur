@@ -1,8 +1,12 @@
-baseURL = "https://rur.pages.dev/"
+baseURL = "https://rur.pages.dev"
 languageCode = "en-us"
 title = "rur"
 
 disableKinds = ["RSS", "sitemap", "taxonomy", "term"]
+enableGitInfo = false
+enableInlineShortcodes = false
+defaultContentLanguageInSubdir = false
+uglyURLs = true
 
 [minify]
   disableXML = true
