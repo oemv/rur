@@ -1,10 +1,19 @@
 baseURL = "https://rur.pages.dev/"
 languageCode = "en-us"
 title = "rur"
-
-disableKinds = ["RSS", "sitemap", "taxonomy"]
+disableKinds = ["RSS", "sitemap", "taxonomy", "term"]
 
 [minify]
-  [minify.tdewolff]
-    [minify.tdewolff.html]
-      keepWhitespace = false
+  disableXML = true
+
+  [minify.tdewolff.html]
+    keepWhitespace = false
+    keepComments = false
+    keepDocumentTags = false
+    keepConditionalComments = false
+
+  [minify.tdewolff.css]
+    keepCSS2 = false
+
+  [minify.tdewolff.js]
+    mangle = true
