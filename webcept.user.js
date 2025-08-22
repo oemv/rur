@@ -8,8 +8,8 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL   https://rur.pages.dev/webcept.user.js
-// @downloadURL https://rur.pages.dev/webcept.user.js
+// @updateURL   https://raw.githack.com/oemv/rur/main/webcept.user.js
+// @downloadURL https://raw.githack.com/oemv/rur/main/webcept.user.js
 // ==/UserScript==
 
 (()=>{ 'use strict';
